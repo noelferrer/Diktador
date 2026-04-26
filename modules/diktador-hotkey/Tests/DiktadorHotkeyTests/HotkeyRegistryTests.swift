@@ -42,4 +42,45 @@ final class HotkeyRegistryTests: XCTestCase {
         XCTAssertEqual(a, b)
         XCTAssertEqual(Set([a, b]).count, 1)
     }
+
+    func test_inputMonitoringPermission_reflectsProviderStatus() {
+        let stub = StubPermissionProvider()
+        stub.statusToReturn = .granted
+        let registry = HotkeyRegistry(permissionProvider: stub)
+        XCTAssertEqual(registry.inputMonitoringPermission, .granted)
+
+        stub.statusToReturn = .denied
+        XCTAssertEqual(registry.inputMonitoringPermission, .denied)
+    }
+
+    func test_requestInputMonitoringPermission_callsProviderAndReturnsResult() {
+        let stub = StubPermissionProvider()
+        stub.requestResultToReturn = .granted
+        let registry = HotkeyRegistry(permissionProvider: stub)
+
+        let expectation = self.expectation(description: "completion called")
+        var observed: InputMonitoringStatus?
+        registry.requestInputMonitoringPermission { status in
+            observed = status
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 1.0)
+
+        XCTAssertEqual(observed, .granted)
+        XCTAssertEqual(stub.requestCallCount, 1)
+    }
+}
+
+private final class StubPermissionProvider: PermissionProvider, @unchecked Sendable {
+    var statusToReturn: InputMonitoringStatus = .undetermined
+    var requestResultToReturn: InputMonitoringStatus = .granted
+    private(set) var requestCallCount = 0
+
+    func currentStatus() -> InputMonitoringStatus { statusToReturn }
+
+    func requestAccess(completion: @escaping (InputMonitoringStatus) -> Void) {
+        requestCallCount += 1
+        let result = requestResultToReturn
+        DispatchQueue.main.async { completion(result) }
+    }
 }
