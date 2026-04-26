@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Workspace conventions (per AGENTS.md)
+.tmp/
+.env
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Obsidian — keep config, drop ephemeral state
+.obsidian/workspace*
+.obsidian/cache
+.obsidian/.trash/
+
+# Xcode (when code lands)
+build/
+DerivedData/
+*.xcuserdatad/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# WhisperKit / Core ML model caches downloaded at runtime
+*.mlmodelc
+*.mlpackage
+
+# Logs
+*.log
