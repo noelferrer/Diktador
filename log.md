@@ -36,6 +36,17 @@ Append-only chronological record. Every entry begins with `## [YYYY-MM-DD] <op> 
 - Open questions filed in the ADR: WhisperKit model default (tiny/base/small) — pick on first measurement; hotkey default (Right-Option proposed); Groq model selection.
 - Knock-on workspace edits applied in same PR: AGENTS.md (stack line + folder shape + module rule 4 generalized for Swift); .claude/skills/go/SKILL.md (test matrix + intro + .gitignore guidance + secret-check); memory/general.md (Project shape + Decisions log).
 
+## [2026-04-26] meta | Hotkey module shipped — PR #2
+- PR: https://github.com/noelferrer/Diktador/pull/2 (feat/hotkey-module → main)
+- Modules touched: modules/diktador-hotkey/ (new); Diktador/ app target (new)
+- Plan executed: docs/superpowers/plans/2026-04-26-xcode-scaffold-and-hotkey-module.md (8 phases A–H, all done)
+- Tests run: xcodebuild Debug + Release BUILD SUCCEEDED; swift test 3/3 XCTest cases pass; computer-use verification (user-driven) confirmed Option+Space → menu bar icon flips between mic/mic.fill and menu label between idle/listening
+- Simplify changes: 3 findings fixed (Entry struct redundant closures dropped; AppDelegate menu titles deduped into static constants; test extensions collapsed into single class body); plus minor comment trims
+- Naming deviations from plan (forced by upstream bugs): module identity DiktadorHotkey not Hotkey; package directory modules/diktador-hotkey/ not modules/hotkey/. Cited SwiftPM #8471 and #7931. Documented in plan top-of-file naming note + README.
+- v1 hotkey: Option+Space (Whisper Flow's classic default). F13 swapped during Phase G after the user reported they don't have F13.
+- Deferred (filed in memory/domains/hotkey.md): bare Fn-key trigger (next PR — needs NSEvent.addGlobalMonitorForEvents + Input Monitoring permission); right-side modifiers; conflict detection; user-configurable trigger (settings module).
+- Bootstrap note: Xcode.app installation by the user was a one-time prerequisite for ANY phase; resolved mid-flow.
+
 ## [2026-04-26] document | First implementation plan — Xcode scaffold + hotkey module
 - Created: docs/superpowers/plans/2026-04-26-xcode-scaffold-and-hotkey-module.md
 - New convention: implementation plans live in docs/superpowers/plans/ (skill default; matches typr-main precedent). Not yet enshrined in AGENTS.md — will land if/when a second plan accumulates.
