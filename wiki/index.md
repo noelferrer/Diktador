@@ -1,7 +1,7 @@
 ---
 type: index
 created: 2026-04-25
-updated: 2026-04-25
+updated: 2026-04-27
 ---
 
 # Index
@@ -17,9 +17,10 @@ This wiki documents two things in parallel:
 
 ---
 
-## Decisions (1)
+## Decisions (2)
 
 - [[decisions/framework-choice]] — Swift + SwiftUI + WhisperKit, macOS-only. Replaces prior Tauri assumption. | 2026-04-26
+- [[decisions/hotkey-modifier-only-trigger]] — Bare-modifier triggers (Fn for v1) via NSEvent global monitor; Input Monitoring permission required. | 2026-04-27
 
 ## Modules (0)
 
@@ -29,9 +30,9 @@ _None yet. One page per module under `modules/<name>/`, written when the module 
 
 _None yet. User-facing features (push-to-talk, hotkey config, model selection, output target, etc.) get filed here as built._
 
-## Howtos (0)
+## Howtos (1)
 
-_None yet. Operational + future end-user guides._
+- [[howtos/first-run-setup]] — Grant Input Monitoring + disable the macOS globe-key action. | 2026-04-27
 
 ## FAQ (0)
 
