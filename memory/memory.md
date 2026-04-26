@@ -10,6 +10,10 @@ Operational working memory for Diktador. Read this first when looking for prior 
 
 For the encyclopedic knowledge layer (decisions, module specs, public-facing docs), see [`wiki/index.md`](../wiki/index.md). The `wiki/` and `memory/` distinction is documented in [`AGENTS.md`](../AGENTS.md) under "Memory system".
 
+## Resume point
+
+- [resume.md](resume.md) — **read first on resume.** Canonical "where we left off + what to do next" handoff between sessions. Updated at end of each session.
+
 ## General
 
 - [general.md](general.md) — cross-cutting facts, environment, preferences
