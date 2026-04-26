@@ -36,6 +36,13 @@ Append-only chronological record. Every entry begins with `## [YYYY-MM-DD] <op> 
 - Open questions filed in the ADR: WhisperKit model default (tiny/base/small) — pick on first measurement; hotkey default (Right-Option proposed); Groq model selection.
 - Knock-on workspace edits applied in same PR: AGENTS.md (stack line + folder shape + module rule 4 generalized for Swift); .claude/skills/go/SKILL.md (test matrix + intro + .gitignore guidance + secret-check); memory/general.md (Project shape + Decisions log).
 
+## [2026-04-26] document | First implementation plan — Xcode scaffold + hotkey module
+- Created: docs/superpowers/plans/2026-04-26-xcode-scaffold-and-hotkey-module.md
+- New convention: implementation plans live in docs/superpowers/plans/ (skill default; matches typr-main precedent). Not yet enshrined in AGENTS.md — will land if/when a second plan accumulates.
+- Plan covers 8 phases (A-H): branch prep, Xcode menu-bar scaffold, hotkey Swift Package, TDD for HotkeyRegistry (3 unit tests), wire-to-icon, README + memory domain, computer-use verification, ship via /go.
+- Deliberate deferrals tracked in the plan and memory/domains/hotkey.md (created by plan task F2): Right-Option-vs-plain-Option, F13-less keyboard fallback, hotkey conflict detection.
+- Plan blocks on PR #1 merging before Phase A can begin (so the workspace schema is on main).
+
 ## [2026-04-26] meta | Initial ship — workspace bootstrap PR
 - PR: https://github.com/noelferrer/Diktador/pull/1 (feat/initialize-workspace → main)
 - Repo: https://github.com/noelferrer/Diktador (initialized; main has just .gitignore; feature branch carries everything else)
