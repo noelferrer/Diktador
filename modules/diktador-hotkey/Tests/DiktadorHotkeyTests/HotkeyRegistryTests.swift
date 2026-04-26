@@ -29,3 +29,14 @@ extension HotkeyRegistryTests {
         XCTAssertEqual(registry.activeRegistrationCount, 0)
     }
 }
+
+extension HotkeyRegistryTests {
+    func test_registeringTwice_yieldsDistinctTokens() {
+        let registry = HotkeyRegistry()
+        let combo = KeyCombo(key: .c, modifiers: [.command])
+        let t1 = registry.register(combo: combo, onPress: {}, onRelease: {})
+        let t2 = registry.register(combo: combo, onPress: {}, onRelease: {})
+        XCTAssertNotEqual(t1, t2)
+        XCTAssertEqual(registry.activeRegistrationCount, 2)
+    }
+}
