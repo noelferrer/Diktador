@@ -13,3 +13,19 @@ final class HotkeyRegistryTests: XCTestCase {
         XCTAssertNotNil(token)
     }
 }
+
+extension HotkeyRegistryTests {
+    func test_unregister_removesEntry() {
+        let registry = HotkeyRegistry()
+        let token = registry.register(
+            combo: KeyCombo(key: .b, modifiers: [.option]),
+            onPress: {},
+            onRelease: {}
+        )
+        XCTAssertEqual(registry.activeRegistrationCount, 1)
+
+        registry.unregister(token)
+
+        XCTAssertEqual(registry.activeRegistrationCount, 0)
+    }
+}
