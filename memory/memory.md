@@ -10,18 +10,21 @@ Operational working memory for Diktador. Read this first when looking for prior 
 
 For the encyclopedic knowledge layer (decisions, module specs, public-facing docs), see [`wiki/index.md`](../wiki/index.md). The `wiki/` and `memory/` distinction is documented in [`AGENTS.md`](../AGENTS.md) under "Memory system".
 
+## Resume point
+
+- [resume.md](resume.md) — **read first on resume.** Canonical "where we left off + what to do next" handoff between sessions. Updated at end of each session.
+
 ## General
 
 - [general.md](general.md) — cross-cutting facts, environment, preferences
 
 ## Domains
 
-_None yet. One file per topic area when memory accrues._
+- [domains/hotkey.md](domains/hotkey.md) — global shortcut registration via soffes/HotKey, conflicts, sided-modifier limits
 
 Planned (created on demand):
 - `domains/recorder.md` — AVAudioEngine capture, VAD, mic permissions
 - `domains/transcriber.md` — WhisperKit + Groq dispatcher, model selection, latency
-- `domains/hotkey.md` — global shortcut registration via soffes/HotKey, conflicts
 - `domains/output.md` — clipboard-paste + CGEvent fallback, Accessibility quirks
 - `domains/settings.md` — UserDefaults + Keychain (Groq key) shape
 - `domains/packaging.md` — Xcode bundling, code signing, notarization
