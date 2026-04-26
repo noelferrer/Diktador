@@ -69,6 +69,42 @@ final class HotkeyRegistryTests: XCTestCase {
         XCTAssertEqual(observed, .granted)
         XCTAssertEqual(stub.requestCallCount, 1)
     }
+
+    func test_registerModifierTrigger_returnsToken_andTracksRegistration() {
+        let registry = HotkeyRegistry(permissionProvider: StubPermissionProvider())
+        let token = registry.register(
+            modifierTrigger: .fn,
+            onPress: {},
+            onRelease: {}
+        )
+        XCTAssertEqual(registry.activeRegistrationCount, 1)
+        XCTAssertNotNil(token)
+
+        registry.unregister(token)
+        XCTAssertEqual(registry.activeRegistrationCount, 0)
+    }
+
+    func test_registerModifierTrigger_andCombo_trackIndependently() {
+        let registry = HotkeyRegistry(permissionProvider: StubPermissionProvider())
+        let comboToken = registry.register(
+            combo: KeyCombo(key: .a, modifiers: [.command]),
+            onPress: {},
+            onRelease: {}
+        )
+        let modifierToken = registry.register(
+            modifierTrigger: .fn,
+            onPress: {},
+            onRelease: {}
+        )
+        XCTAssertEqual(registry.activeRegistrationCount, 2)
+        XCTAssertNotEqual(comboToken, modifierToken)
+
+        registry.unregister(comboToken)
+        XCTAssertEqual(registry.activeRegistrationCount, 1)
+
+        registry.unregister(modifierToken)
+        XCTAssertEqual(registry.activeRegistrationCount, 0)
+    }
 }
 
 private final class StubPermissionProvider: PermissionProvider, @unchecked Sendable {

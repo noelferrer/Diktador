@@ -43,6 +43,7 @@ public final class HotkeyRegistry {
 
     // MARK: KeyCombo (Carbon path) — unchanged from PR #2
 
+    /// Registers a key combo and returns a token used to later unregister it.
     public func register(
         combo: KeyCombo,
         onPress: @escaping () -> Void,
@@ -56,12 +57,67 @@ public final class HotkeyRegistry {
         return RegistrationToken(id: id)
     }
 
-    // MARK: ModifierTrigger (NSEvent path) — added in this PR; expanded in Phase E
+    // MARK: ModifierTrigger (NSEvent path)
 
-    // (added in Task E2)
+    /// Registers a bare-modifier trigger and returns a token used to later unregister it.
+    /// `onPress` fires on the modifier's down-edge, `onRelease` on its up-edge.
+    /// Requires Input Monitoring permission to fire while another app is frontmost.
+    public func register(
+        modifierTrigger: ModifierTrigger,
+        onPress: @escaping () -> Void,
+        onRelease: @escaping () -> Void
+    ) -> RegistrationToken {
+        let id = UUID()
+        var entry = ModifierMonitorEntry(
+            trigger: modifierTrigger,
+            globalHandle: nil,
+            localHandle: nil,
+            isPressed: false,
+            onPress: onPress,
+            onRelease: onRelease
+        )
+
+        let globalHandler: (NSEvent) -> Void = { [weak self] event in
+            self?.handleFlagsChanged(event: event, tokenID: id)
+        }
+        let localHandler: (NSEvent) -> NSEvent? = { [weak self] event in
+            self?.handleFlagsChanged(event: event, tokenID: id)
+            return event
+        }
+
+        entry.globalHandle = NSEvent.addGlobalMonitorForEvents(
+            matching: .flagsChanged,
+            handler: globalHandler
+        )
+        entry.localHandle = NSEvent.addLocalMonitorForEvents(
+            matching: .flagsChanged,
+            handler: localHandler
+        )
+
+        if entry.globalHandle == nil {
+            NSLog("[hotkey] failed to install global monitor for \(modifierTrigger)")
+        }
+
+        monitorEntries[id] = entry
+        return RegistrationToken(id: id)
+    }
+
+    private func handleFlagsChanged(event: NSEvent, tokenID: UUID) {
+        guard var entry = monitorEntries[tokenID] else { return }
+        let isPressedNow = event.modifierFlags.contains(entry.trigger.flag)
+        guard isPressedNow != entry.isPressed else { return }
+        entry.isPressed = isPressedNow
+        monitorEntries[tokenID] = entry
+        if isPressedNow {
+            entry.onPress()
+        } else {
+            entry.onRelease()
+        }
+    }
 
     // MARK: Unregister
 
+    /// Removes the registration associated with the token (no-op if unknown).
     public func unregister(_ token: RegistrationToken) {
         if carbonEntries.removeValue(forKey: token.id) != nil { return }
         if let entry = monitorEntries.removeValue(forKey: token.id) {
