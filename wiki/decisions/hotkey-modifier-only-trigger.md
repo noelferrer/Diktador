@@ -17,7 +17,7 @@ The user explicitly asked for bare-Fn push-to-talk during Phase G of PR #2. File
 
 ## Decision
 
-Extend `HotkeyRegistry` with a parallel internal code path built on `NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged)`, exposed through a new `register(modifierTrigger:onPress:onRelease:)` overload and a new public `ModifierTrigger` enum. The existing `register(combo:)` Carbon path is unchanged. Both paths produce the same opaque `RegistrationToken`; `unregister` looks in two internal storage maps.
+Extend `HotkeyRegistry` with a parallel internal code path built on `NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged)` (for events arriving while another app is frontmost) paired with `addLocalMonitorForEvents(matching: .flagsChanged)` (for events while Diktador itself is frontmost), exposed through a new `register(modifierTrigger:onPress:onRelease:)` overload and a new public `ModifierTrigger` enum. The existing `register(combo:)` Carbon path is unchanged. Both paths produce the same opaque `RegistrationToken`; `unregister` looks in two internal storage maps.
 
 The NSEvent global monitor requires the macOS **Input Monitoring** TCC permission (granted via System Settings → Privacy & Security → Input Monitoring). Surface this as a public `inputMonitoringPermission: InputMonitoringStatus` getter and a `requestInputMonitoringPermission(completion:)` method on the registry; let the app target orchestrate the user-facing permission flow (`AppDelegate.bootstrapPushToTalk` does this in v1).
 
