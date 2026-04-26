@@ -16,12 +16,11 @@ For the encyclopedic knowledge layer (decisions, module specs, public-facing doc
 
 ## Domains
 
-_None yet. One file per topic area when memory accrues._
+- [domains/hotkey.md](domains/hotkey.md) — global shortcut registration via soffes/HotKey, conflicts, sided-modifier limits
 
 Planned (created on demand):
 - `domains/recorder.md` — AVAudioEngine capture, VAD, mic permissions
 - `domains/transcriber.md` — WhisperKit + Groq dispatcher, model selection, latency
-- `domains/hotkey.md` — global shortcut registration via soffes/HotKey, conflicts
 - `domains/output.md` — clipboard-paste + CGEvent fallback, Accessibility quirks
 - `domains/settings.md` — UserDefaults + Keychain (Groq key) shape
 - `domains/packaging.md` — Xcode bundling, code signing, notarization
