@@ -12,9 +12,7 @@ final class HotkeyRegistryTests: XCTestCase {
         XCTAssertEqual(registry.activeRegistrationCount, 1)
         XCTAssertNotNil(token)
     }
-}
 
-extension HotkeyRegistryTests {
     func test_unregister_removesEntry() {
         let registry = HotkeyRegistry()
         let token = registry.register(
@@ -28,9 +26,7 @@ extension HotkeyRegistryTests {
 
         XCTAssertEqual(registry.activeRegistrationCount, 0)
     }
-}
 
-extension HotkeyRegistryTests {
     func test_registeringTwice_yieldsDistinctTokens() {
         let registry = HotkeyRegistry()
         let combo = KeyCombo(key: .c, modifiers: [.command])

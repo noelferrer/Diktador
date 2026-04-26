@@ -2,6 +2,9 @@ import AppKit
 import DiktadorHotkey
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private static let idleTitle = "Diktador (idle)"
+    private static let listeningTitle = "Diktador (listening…)"
+
     private var statusItem: NSStatusItem?
     private let hotkeys = HotkeyRegistry()
     private var pushToTalkToken: HotkeyRegistry.RegistrationToken?
@@ -16,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.image = Self.idleImage
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Diktador (idle)", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: Self.idleTitle, action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(
             title: "Quit",
@@ -29,11 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func registerPushToTalk() {
-        // v1 default: Option+Space push-to-talk. Hardcoded; settings module will replace this.
-        // Mirrors Whisper Flow's classic default; Cmd+Space is Spotlight, so Option+Space is free.
-        // soffes/HotKey doesn't distinguish left vs right modifiers; sided-modifier support and
-        // bare-Fn-key triggers (the ideal Mac dictation UX) require dropping down to
-        // NSEvent.addGlobalMonitorForEvents in a follow-up PR.
+        // v1 hardcoded default; the settings module will replace this. Bare Fn-key triggers
+        // and sided modifiers (the ideal Mac dictation UX) need NSEvent.addGlobalMonitorForEvents,
+        // which Carbon Events / soffes/HotKey can't reach — filed as the next focused PR.
         let combo = KeyCombo(key: .space, modifiers: [.option])
         pushToTalkToken = hotkeys.register(
             combo: combo,
@@ -42,12 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    /// Toggle the menu-bar icon and first menu row between idle and listening states.
     func setListening(_ listening: Bool) {
         statusItem?.button?.image = listening ? Self.listeningImage : Self.idleImage
-        statusItem?.menu?.items.first?.title = listening
-            ? "Diktador (listening…)"
-            : "Diktador (idle)"
+        statusItem?.menu?.items.first?.title = listening ? Self.listeningTitle : Self.idleTitle
     }
 
     static var idleImage: NSImage? {

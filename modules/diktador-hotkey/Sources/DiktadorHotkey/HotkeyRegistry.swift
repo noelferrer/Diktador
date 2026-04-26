@@ -7,13 +7,9 @@ public final class HotkeyRegistry {
         fileprivate let id: UUID
     }
 
-    private struct Entry {
-        let hotKey: HotKey
-        let onPress: () -> Void
-        let onRelease: () -> Void
-    }
-
-    private var entries: [UUID: Entry] = [:]
+    // HotKey retains its own keyDownHandler/keyUpHandler closures, so the registry only
+    // needs to hold the HotKey instance to keep the registration alive.
+    private var entries: [UUID: HotKey] = [:]
 
     public init() {}
 
@@ -29,7 +25,7 @@ public final class HotkeyRegistry {
         hotKey.keyDownHandler = onPress
         hotKey.keyUpHandler = onRelease
         let id = UUID()
-        entries[id] = Entry(hotKey: hotKey, onPress: onPress, onRelease: onRelease)
+        entries[id] = hotKey
         return RegistrationToken(id: id)
     }
 
