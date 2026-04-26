@@ -29,11 +29,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func registerPushToTalk() {
-        // v1 default: Option+F13 push-to-talk. Hardcoded; settings module will replace this.
-        // soffes/HotKey doesn't distinguish left vs right modifiers; the ADR's "Right-Option"
-        // proposal becomes possible only when we drop down to NSEvent.addGlobalMonitorForEvents
-        // in a later module. v1 uses an uncommon combo that's unlikely to collide.
-        let combo = KeyCombo(key: .f13, modifiers: [.option])
+        // v1 default: Option+Space push-to-talk. Hardcoded; settings module will replace this.
+        // Mirrors Whisper Flow's classic default; Cmd+Space is Spotlight, so Option+Space is free.
+        // soffes/HotKey doesn't distinguish left vs right modifiers; sided-modifier support and
+        // bare-Fn-key triggers (the ideal Mac dictation UX) require dropping down to
+        // NSEvent.addGlobalMonitorForEvents in a follow-up PR.
+        let combo = KeyCombo(key: .space, modifiers: [.option])
         pushToTalkToken = hotkeys.register(
             combo: combo,
             onPress: { [weak self] in self?.setListening(true) },

@@ -11,16 +11,16 @@ Public surface and failure modes live in [`modules/diktador-hotkey/README.md`](.
 
 ## v1 configuration
 
-- Combo: `Option+F13` (placeholder; uncommon enough to dodge most OS / app reservations).
+- Combo: `Option+Space` (Whisper Flow's classic push-to-talk default; Cmd+Space is Spotlight, so Option+Space is generally free).
 - Behavior: hold-to-talk. `onPress` starts listening, `onRelease` stops.
 - Registry: instantiated and owned by `AppDelegate`; lives in `modules/diktador-hotkey/`.
 - Combo is hardcoded in `AppDelegate`. The future `settings` module will read from `UserDefaults` and call `unregister` + `register` on change.
 
-## Open questions (deferred until settings module exists)
+## Open questions (deferred to follow-up PRs / settings module)
 
-- Right-Option-only support — Carbon Events doesn't expose sided modifiers; would need a parallel path through `NSEvent.addGlobalMonitorForEvents`. Decide before promising the feature in UI.
-- F13-less keyboards — most laptops and many compact externals have no F13. Need a sensible default fallback (Right-Option? a chord?) and a way for users to rebind.
-- Conflict detection — soffes/HotKey fails silently when the combo is already taken. v2 plan is `CGEventSource` introspection at registration; until then, a "test your hotkey" affordance in settings would catch most cases.
+- **Bare Fn-key trigger** (the canonical Mac dictation UX, used by Whisper Flow): not possible through soffes/HotKey since Carbon Events doesn't model Fn as a modifier. Needs a parallel path through `NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged)` plus the Input Monitoring permission. Filed as the next focused PR after this one.
+- **Right-Option-only / sided-modifier support** — same root cause: Carbon doesn't expose sidedness. Same `NSEvent` global-monitor solution as Fn. Decide before promising in UI.
+- **Conflict detection** — soffes/HotKey fails silently when the combo is already taken. v2 plan is `CGEventSource` introspection at registration; until then, a "test your hotkey" affordance in settings would catch most cases.
 
 ## Debug recipes
 
