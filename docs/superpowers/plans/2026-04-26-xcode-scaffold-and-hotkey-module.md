@@ -4,7 +4,9 @@
 
 **Goal:** Produce a buildable `Diktador.app` menu bar app that responds to a global **Right-Option hold** by toggling its menu bar icon between "idle" and "listening" states. No transcription, no recording — purely the input-detection plumbing wrapped in the first proper Diktador module (`hotkey`).
 
-**Architecture:** Single Xcode project at workspace root (`Diktador.xcodeproj`). The `hotkey` module is a local Swift Package at `modules/hotkey/` consumed by the main app target. The third-party [`soffes/HotKey`](https://github.com/soffes/HotKey) library (Carbon Events wrapper) is the only dependency in the module; the rest of the app talks to our `HotkeyRegistry` API, never to `HotKey` directly. This keeps fault isolation per `AGENTS.md` rule 4 (one public surface per module).
+**Architecture:** Single Xcode project at workspace root (`Diktador.xcodeproj`). The hotkey module is a local Swift Package at `modules/diktador-hotkey/` exposing a library named `DiktadorHotkey` to the main app target. The third-party [`soffes/HotKey`](https://github.com/soffes/HotKey) library (Carbon Events wrapper) is the only external dependency; the rest of the app talks to our `HotkeyRegistry` API, never to `HotKey` directly. This keeps fault isolation per `AGENTS.md` rule 4 (one public surface per module).
+
+> **Naming note (forced during Phase C):** The package directory and library name are `diktador-hotkey` / `DiktadorHotkey` rather than the originally-planned `hotkey` / `Hotkey`. Two SwiftPM bugs forced the rename: (1) [swift-package-manager#8471](https://github.com/swiftlang/swift-package-manager/issues/8471) — when a local package's directory identity matches a transitive dep's identity (both would be lowercase `hotkey`), `swift package resolve` silently fails to fetch the dep; (2) [#7931](https://github.com/swiftlang/swift-package-manager/issues/7931) — APFS case-insensitivity collapses `Hotkey.swiftmodule` and `HotKey.swiftmodule` into the same file, overwriting our build output. Renaming the consuming directory and library is the documented workaround. The `HotkeyRegistry` *type name* and the `hotkey` *module name in conceptual / wiki / memory references* stay unchanged — only the SwiftPM identifiers shift.
 
 **Tech Stack:** Swift 5.10+, SwiftUI (menu bar), AppKit (`NSStatusItem`), soffes/HotKey via SPM, XCTest, macOS 14+ deployment target.
 
@@ -22,11 +24,11 @@
 | `Diktador/Info.plist` | `LSUIElement = YES` (no Dock icon); minimum macOS 14. |
 | `Diktador/Assets.xcassets/StatusIdle.imageset/` | Menu bar icon, idle state (template image, monochrome). |
 | `Diktador/Assets.xcassets/StatusListening.imageset/` | Menu bar icon, listening state (template image, monochrome with red dot). |
-| `modules/hotkey/Package.swift` | Swift Package manifest. Declares `Hotkey` library + `HotkeyTests` test target. Depends on `soffes/HotKey`. |
-| `modules/hotkey/Sources/Hotkey/HotkeyRegistry.swift` | The module's single public type. Wraps `HotKey`, exposes `register(combo:onPress:onRelease:) -> RegistrationToken`, `unregister(_:)`. |
-| `modules/hotkey/Sources/Hotkey/KeyCombo.swift` | Public re-export of `HotKey.KeyCombo` so the rest of the app never imports `HotKey` directly. |
-| `modules/hotkey/Tests/HotkeyTests/HotkeyRegistryTests.swift` | XCTest cases for registry state (registration storage, unregister removes, double-register rejected). The actual key-press → callback path is verified end-to-end in Phase G via computer use, since OS hotkeys can't fire from a unit test. |
-| `modules/hotkey/README.md` | Per `AGENTS.md` template: Purpose / Public API / Dependencies / Known failure modes. |
+| `modules/diktador-hotkey/Package.swift` | Swift Package manifest. Declares `Hotkey` library + `HotkeyTests` test target. Depends on `soffes/HotKey`. |
+| `modules/diktador-hotkey/Sources/DiktadorHotkey/HotkeyRegistry.swift` | The module's single public type. Wraps `HotKey`, exposes `register(combo:onPress:onRelease:) -> RegistrationToken`, `unregister(_:)`. |
+| `modules/diktador-hotkey/Sources/DiktadorHotkey/KeyCombo.swift` | Public re-export of `HotKey.KeyCombo` so the rest of the app never imports `HotKey` directly. |
+| `modules/diktador-hotkey/Tests/DiktadorHotkeyTests/HotkeyRegistryTests.swift` | XCTest cases for registry state (registration storage, unregister removes, double-register rejected). The actual key-press → callback path is verified end-to-end in Phase G via computer use, since OS hotkeys can't fire from a unit test. |
+| `modules/diktador-hotkey/README.md` | Per `AGENTS.md` template: Purpose / Public API / Dependencies / Known failure modes. |
 | `memory/domains/hotkey.md` | Operational notes that don't belong in the module README (debugging tricks, OS quirks discovered during build). |
 
 ---
@@ -280,42 +282,42 @@ git commit -m "Add idle/listening icon toggle on AppDelegate (SF Symbols)"
 ### Task C1: Create the Swift Package skeleton
 
 **Files:**
-- Create: `modules/hotkey/Package.swift`
-- Create: `modules/hotkey/Sources/Hotkey/.keep`
-- Create: `modules/hotkey/Tests/HotkeyTests/.keep`
+- Create: `modules/diktador-hotkey/Package.swift`
+- Create: `modules/diktador-hotkey/Sources/DiktadorHotkey/.keep`
+- Create: `modules/diktador-hotkey/Tests/DiktadorHotkeyTests/.keep`
 
 - [ ] **Step 1:** Create the directory tree
 
 ```bash
-mkdir -p modules/hotkey/Sources/Hotkey modules/hotkey/Tests/HotkeyTests
-touch modules/hotkey/Sources/Hotkey/.keep modules/hotkey/Tests/HotkeyTests/.keep
+mkdir -p modules/diktador-hotkey/Sources/Hotkey modules/diktador-hotkey/Tests/HotkeyTests
+touch modules/diktador-hotkey/Sources/DiktadorHotkey/.keep modules/diktador-hotkey/Tests/DiktadorHotkeyTests/.keep
 ```
 
-- [ ] **Step 2:** Write `modules/hotkey/Package.swift`
+- [ ] **Step 2:** Write `modules/diktador-hotkey/Package.swift`
 
 ```swift
 // swift-tools-version:5.10
 import PackageDescription
 
 let package = Package(
-    name: "Hotkey",
+    name: "DiktadorHotkey",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "Hotkey", targets: ["Hotkey"]),
+        .library(name: "DiktadorHotkey", targets: ["DiktadorHotkey"]),
     ],
     dependencies: [
         .package(url: "https://github.com/soffes/HotKey", from: "0.2.0"),
     ],
     targets: [
         .target(
-            name: "Hotkey",
+            name: "DiktadorHotkey",
             dependencies: [
                 .product(name: "HotKey", package: "HotKey"),
             ]
         ),
         .testTarget(
-            name: "HotkeyTests",
-            dependencies: ["Hotkey"]
+            name: "DiktadorHotkeyTests",
+            dependencies: ["DiktadorHotkey"]
         ),
     ]
 )
@@ -334,7 +336,7 @@ Expected: dependency `HotKey` fetched; build succeeds (will warn that the target
 - [ ] **Step 4:** Commit the package skeleton (we'll commit again after the implementation lands)
 
 ```bash
-git add modules/hotkey/
+git add modules/diktador-hotkey/
 git commit -m "Add hotkey module package skeleton (Swift Package, soffes/HotKey dep)"
 ```
 
@@ -342,7 +344,7 @@ git commit -m "Add hotkey module package skeleton (Swift Package, soffes/HotKey 
 
 **Files:** modifies `Diktador.xcodeproj/project.pbxproj` (via Xcode UI).
 
-- [ ] **Step 1:** In Xcode → File → Add Package Dependencies → **Add Local…** → select `modules/hotkey/` → Add Package. Confirm `Hotkey` library is checked under the `Diktador` app target.
+- [ ] **Step 1:** In Xcode → File → Add Package Dependencies → **Add Local…** → select `modules/diktador-hotkey/` → Add Package. Confirm `Hotkey` library is checked under the `Diktador` app target.
 
 - [ ] **Step 2:** Build to verify the link works
 
@@ -365,13 +367,13 @@ git commit -m "Link hotkey module to Diktador app target as local SPM dependency
 ### Task D1: Failing test — registry stores callbacks under a token
 
 **Files:**
-- Create: `modules/hotkey/Tests/HotkeyTests/HotkeyRegistryTests.swift`
+- Create: `modules/diktador-hotkey/Tests/DiktadorHotkeyTests/HotkeyRegistryTests.swift`
 
 - [ ] **Step 1:** Write the failing test
 
 ```swift
 import XCTest
-@testable import Hotkey
+@testable import DiktadorHotkey
 
 final class HotkeyRegistryTests: XCTestCase {
     func test_register_returnsToken_andTracksRegistration() {
@@ -399,10 +401,10 @@ Expected: build error — `HotkeyRegistry` not defined.
 ### Task D2: Minimal implementation to pass D1
 
 **Files:**
-- Create: `modules/hotkey/Sources/Hotkey/HotkeyRegistry.swift`
-- Create: `modules/hotkey/Sources/Hotkey/KeyCombo.swift`
+- Create: `modules/diktador-hotkey/Sources/DiktadorHotkey/HotkeyRegistry.swift`
+- Create: `modules/diktador-hotkey/Sources/DiktadorHotkey/KeyCombo.swift`
 
-- [ ] **Step 1:** Create `modules/hotkey/Sources/Hotkey/KeyCombo.swift`
+- [ ] **Step 1:** Create `modules/diktador-hotkey/Sources/DiktadorHotkey/KeyCombo.swift`
 
 ```swift
 import HotKey
@@ -421,7 +423,7 @@ public struct KeyCombo: Hashable, Sendable {
 }
 ```
 
-- [ ] **Step 2:** Create `modules/hotkey/Sources/Hotkey/HotkeyRegistry.swift`
+- [ ] **Step 2:** Create `modules/diktador-hotkey/Sources/DiktadorHotkey/HotkeyRegistry.swift`
 
 ```swift
 import AppKit
@@ -475,7 +477,7 @@ Expected: PASS.
 - [ ] **Step 4:** Commit
 
 ```bash
-git add modules/hotkey/Sources/ modules/hotkey/Tests/
+git add modules/diktador-hotkey/Sources/ modules/diktador-hotkey/Tests/
 git commit -m "Add HotkeyRegistry with register() returning a token"
 ```
 
@@ -513,7 +515,7 @@ Expected: 2 tests pass. (TDD purist note: this test was anticipated by D2's impl
 - [ ] **Step 3:** Commit
 
 ```bash
-git add modules/hotkey/Tests/HotkeyTests/HotkeyRegistryTests.swift
+git add modules/diktador-hotkey/Tests/DiktadorHotkeyTests/HotkeyRegistryTests.swift
 git commit -m "Test that unregister removes the registry entry"
 ```
 
@@ -548,7 +550,7 @@ Expected: 3 tests pass.
 - [ ] **Step 3:** Commit
 
 ```bash
-git add modules/hotkey/Tests/HotkeyTests/HotkeyRegistryTests.swift
+git add modules/diktador-hotkey/Tests/DiktadorHotkeyTests/HotkeyRegistryTests.swift
 git commit -m "Test distinct tokens for repeated registration of the same combo"
 ```
 
@@ -567,7 +569,7 @@ The hotkey module is now testable. Wire it into the app so a real key press togg
 
 ```swift
 import AppKit
-import Hotkey
+import DiktadorHotkey
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
@@ -658,9 +660,9 @@ git commit -m "Wire hotkey module to menu bar icon (Option+F13 push-to-talk)"
 ### Task F1: Write the module README
 
 **Files:**
-- Create: `modules/hotkey/README.md`
+- Create: `modules/diktador-hotkey/README.md`
 
-- [ ] **Step 1:** Write `modules/hotkey/README.md`
+- [ ] **Step 1:** Write `modules/diktador-hotkey/README.md`
 
 ```markdown
 # hotkey
@@ -677,7 +679,7 @@ Register a global keyboard shortcut and deliver press/release callbacks. Wraps s
 - `KeyCombo(key: Key, modifiers: Modifier)` — value type for combo definitions; `Key` and `Modifier` are re-exports of `HotKey.Key` and `NSEvent.ModifierFlags`.
 - `activeRegistrationCount: Int` — for tests/diagnostics.
 
-Test scheme: `swift test` from `modules/hotkey/`.
+Test scheme: `swift test` from `modules/diktador-hotkey/`.
 
 ## Dependencies
 
@@ -698,7 +700,7 @@ No env vars, no external services.
 - [ ] **Step 2:** Commit
 
 ```bash
-git add modules/hotkey/README.md
+git add modules/diktador-hotkey/README.md
 git commit -m "Document hotkey module: purpose, API, dependencies, failure modes"
 ```
 
@@ -724,7 +726,7 @@ updated: 2026-04-26
 
 - Combo: `Option + F13` (placeholder; see Open questions)
 - Behavior: hold-to-talk
-- Registration: `HotkeyRegistry` in `modules/hotkey/`
+- Registration: `HotkeyRegistry` in `modules/diktador-hotkey/`
 
 ## Open questions
 
@@ -799,7 +801,7 @@ Verification checklist:
 - [ ] Release the hotkey. Icon and label revert to idle.
 - [ ] Click Quit. The icon disappears.
 
-If any check fails, debug per `modules/hotkey/README.md` "Known failure modes" before continuing.
+If any check fails, debug per `modules/diktador-hotkey/README.md` "Known failure modes" before continuing.
 
 - [ ] **Step 4:** Capture evidence
 
