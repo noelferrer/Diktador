@@ -7,15 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5532D5476F8271F3F0D2EEF4 /* DiktadorHotkey in Frameworks */ = {isa = PBXBuildFile; productRef = 1FACB9F9879D227F1D01FFBE /* DiktadorHotkey */; };
 		CBED9DB25384FA74E8C14718 /* DiktadorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFDBCE24FE97B198D07E2EF6 /* DiktadorApp.swift */; };
 		E64C4EC48A610C142111E826 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F04E0887D935D9A8890DE88 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		5F04E0887D935D9A8890DE88 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A21310CA90623730919F9A3E /* diktador-hotkey */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "diktador-hotkey"; path = "modules/diktador-hotkey"; sourceTree = SOURCE_ROOT; };
 		BFA7F30F0BFCD6F60F1A9A8B /* Diktador.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Diktador.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FFDBCE24FE97B198D07E2EF6 /* DiktadorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiktadorApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		203B7E0BF17EF7CD423DF162 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5532D5476F8271F3F0D2EEF4 /* DiktadorHotkey in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1F377D0E6B8A9BC76F90B41D /* Products */ = {
@@ -39,8 +52,17 @@
 			isa = PBXGroup;
 			children = (
 				8CDEA4BBD848F421712723F3 /* Diktador */,
+				C897877EA592EA66FF9580DD /* Packages */,
 				1F377D0E6B8A9BC76F90B41D /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		C897877EA592EA66FF9580DD /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				A21310CA90623730919F9A3E /* diktador-hotkey */,
+			);
+			name = Packages;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -51,6 +73,7 @@
 			buildConfigurationList = 87EB569F953833F4782FF9A7 /* Build configuration list for PBXNativeTarget "Diktador" */;
 			buildPhases = (
 				D4860C0718139B73E0C99FFA /* Sources */,
+				203B7E0BF17EF7CD423DF162 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -58,6 +81,7 @@
 			);
 			name = Diktador;
 			packageProductDependencies = (
+				1FACB9F9879D227F1D01FFBE /* DiktadorHotkey */,
 			);
 			productName = Diktador;
 			productReference = BFA7F30F0BFCD6F60F1A9A8B /* Diktador.app */;
@@ -87,6 +111,9 @@
 			);
 			mainGroup = B0B5B9410F2967988D7EF56A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FE09E07320DCCECF43AB0AFC /* XCLocalSwiftPackageReference "modules/diktador-hotkey" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1F377D0E6B8A9BC76F90B41D /* Products */;
 			projectDirPath = "";
@@ -305,6 +332,20 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		FE09E07320DCCECF43AB0AFC /* XCLocalSwiftPackageReference "modules/diktador-hotkey" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "modules/diktador-hotkey";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1FACB9F9879D227F1D01FFBE /* DiktadorHotkey */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DiktadorHotkey;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 453FE5154C18123BCB1DC46E /* Project object */;
 }
