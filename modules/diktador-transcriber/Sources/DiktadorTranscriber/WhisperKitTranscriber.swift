@@ -50,6 +50,7 @@ public final class WhisperKitTranscriber: Transcriber {
 
     public func loadModel() async throws {
         if case .ready = state { return }
+        if case .failed(let error) = state { throw error }
         if let task = inFlightLoad {
             try await task.value
             return

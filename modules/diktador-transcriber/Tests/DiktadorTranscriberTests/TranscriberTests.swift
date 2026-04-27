@@ -196,6 +196,25 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(transcriber.state, .ready)
     }
 
+    @MainActor
+    func test_transcribe_afterFailedModelLoad_throwsModelLoadFailed_withoutCallingDriver() async throws {
+        struct LoadFailure: Error {}
+        let driver = StubWhisperKitDriver()
+        driver.loadModelError = LoadFailure()
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        do {
+            try await transcriber.loadModel()
+            XCTFail("expected loadModel to throw")
+        } catch { /* expected */ }
+        XCTAssertEqual(driver.transcribeCalls.count, 0)
+
+        do {
+            _ = try await transcriber.transcribe(audioFileURL: Self.tempAudioFile())
+            XCTFail("expected transcribe to throw")
+        } catch TranscriberError.modelLoadFailed { /* expected */ }
+        XCTAssertEqual(driver.transcribeCalls.count, 0, "driver.transcribe must not be called while .failed")
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
