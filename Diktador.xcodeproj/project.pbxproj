@@ -15,6 +15,7 @@
 
 /* Begin PBXFileReference section */
 		441F116FEF9B7FFA23B3D88A /* diktador-recorder */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "diktador-recorder"; path = "modules/diktador-recorder"; sourceTree = SOURCE_ROOT; };
+		4533454C2C6EB1D49E9687BE /* Diktador.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Diktador.entitlements; sourceTree = "<group>"; };
 		5F04E0887D935D9A8890DE88 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A21310CA90623730919F9A3E /* diktador-hotkey */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "diktador-hotkey"; path = "modules/diktador-hotkey"; sourceTree = SOURCE_ROOT; };
 		BFA7F30F0BFCD6F60F1A9A8B /* Diktador.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Diktador.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -46,6 +47,7 @@
 			isa = PBXGroup;
 			children = (
 				5F04E0887D935D9A8890DE88 /* AppDelegate.swift */,
+				4533454C2C6EB1D49E9687BE /* Diktador.entitlements */,
 				FFDBCE24FE97B198D07E2EF6 /* DiktadorApp.swift */,
 			);
 			path = Diktador;
@@ -147,6 +149,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Diktador/Diktador.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -297,6 +300,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Diktador/Diktador.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;

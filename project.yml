@@ -34,6 +34,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.noelferrer.Diktador
+        CODE_SIGN_ENTITLEMENTS: Diktador/Diktador.entitlements
         PRODUCT_NAME: Diktador
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES
