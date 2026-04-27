@@ -165,6 +165,20 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(text, "second try")
     }
 
+    @MainActor
+    func test_transcribe_fromUninitialized_triggersImplicitLoadModel() async throws {
+        let driver = StubWhisperKitDriver()
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        XCTAssertEqual(transcriber.state, .uninitialized)
+
+        let text = try await transcriber.transcribe(audioFileURL: Self.tempAudioFile())
+
+        XCTAssertEqual(text, "stub transcript")
+        XCTAssertEqual(driver.loadModelCalls.count, 1, "transcribe must drive loadModel implicitly")
+        XCTAssertEqual(driver.transcribeCalls.count, 1)
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
