@@ -215,6 +215,23 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(driver.transcribeCalls.count, 0, "driver.transcribe must not be called while .failed")
     }
 
+    @MainActor
+    func test_transcribe_missingFile_throwsAudioFileUnreadable_withoutCallingDriver() async throws {
+        let driver = StubWhisperKitDriver()
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        try await transcriber.loadModel()
+
+        let bogus = URL(fileURLWithPath: "/tmp/diktador-does-not-exist-\(UUID().uuidString).wav")
+        do {
+            _ = try await transcriber.transcribe(audioFileURL: bogus)
+            XCTFail("expected audioFileUnreadable")
+        } catch TranscriberError.audioFileUnreadable(let url) {
+            XCTAssertEqual(url, bogus)
+        }
+        XCTAssertEqual(driver.transcribeCalls.count, 0, "driver must not be invoked for a missing file")
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
