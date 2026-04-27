@@ -84,6 +84,20 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(transcriber.state, .ready)
     }
 
+    @MainActor
+    func test_loadModel_concurrent_callsCoalesceToSingleDriverCall() async throws {
+        let driver = StubWhisperKitDriver()
+        driver.loadModelDelay = 50_000_000  // 50 ms — long enough that both Tasks join the in-flight one
+        let transcriber = WhisperKitTranscriber(driver: driver)
+
+        async let a: Void = transcriber.loadModel()
+        async let b: Void = transcriber.loadModel()
+        _ = try await (a, b)
+
+        XCTAssertEqual(driver.loadModelCalls.count, 1)
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
