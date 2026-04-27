@@ -24,6 +24,8 @@ public final class WhisperKitTranscriber: Transcriber {
     private let modelName: String
     private let modelStorage: URL
 
+    private var inFlightLoad: Task<Void, Error>?
+
     public private(set) var state: TranscriberState = .uninitialized
 
     /// Production initializer.
@@ -47,9 +49,19 @@ public final class WhisperKitTranscriber: Transcriber {
     }
 
     public func loadModel() async throws {
+        if case .ready = state { return }
+        if let task = inFlightLoad {
+            try await task.value
+            return
+        }
         state = .loading
-        do {
+        let task = Task<Void, Error> { [self, modelName, modelStorage] in
             try await driver.loadModel(name: modelName, modelStorage: modelStorage)
+        }
+        inFlightLoad = task
+        defer { inFlightLoad = nil }
+        do {
+            try await task.value
             state = .ready
         } catch {
             let mapped = TranscriberError.modelLoadFailed(message: String(describing: error))

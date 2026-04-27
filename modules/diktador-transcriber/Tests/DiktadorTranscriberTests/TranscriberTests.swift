@@ -74,6 +74,16 @@ final class TranscriberTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func test_loadModel_idempotent_secondCallIsNoOp() async throws {
+        let driver = StubWhisperKitDriver()
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        try await transcriber.loadModel()
+        try await transcriber.loadModel()
+        XCTAssertEqual(driver.loadModelCalls.count, 1, "loadModel must not re-invoke driver once .ready")
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
