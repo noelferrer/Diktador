@@ -159,10 +159,84 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 statusItem?.menu?.insertItem(item, at: 1)
                 lastRecordingItem = item
             }
+            let url = recording.fileURL
+            Task { @MainActor [weak self] in
+                await self?.runTranscription(for: url)
+            }
         case .failure(let error):
             NSLog("[app] recorder.stop failed: \(error)")
             flashFailure(error)
         }
+    }
+
+    @MainActor
+    private func runTranscription(for audioFileURL: URL) async {
+        transcriberStatusItem?.title = Self.transcriberTranscribingTitle
+        do {
+            let transcript = try await transcriber.transcribe(audioFileURL: audioFileURL)
+            copyTranscriptToPasteboard(transcript)
+            updateLastTranscriptItem(transcript)
+            lastTranscript = transcript
+            transcriberStatusItem?.title = Self.transcriberReadyTitle
+        } catch TranscriberError.emptyTranscript {
+            transcriberStatusItem?.title = Self.transcriberNoSpeechTitle
+            NSLog("[app] transcription returned no speech for \(audioFileURL.lastPathComponent)")
+        } catch TranscriberError.modelLoadFailed(let message) {
+            transcriberStatusItem?.title = Self.transcriberFailedTitle
+            NSLog("[app] transcription unavailable: \(message)")
+        } catch {
+            transcriberStatusItem?.title = Self.transcriberInferenceFailedTitle
+            NSLog("[app] transcription failed: \(error)")
+        }
+    }
+
+    @MainActor
+    private func copyTranscriptToPasteboard(_ transcript: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(transcript, forType: .string)
+    }
+
+    @MainActor
+    private func updateLastTranscriptItem(_ transcript: String) {
+        let title = Self.lastTranscriptMenuTitle(for: transcript)
+        if let item = lastTranscriptItem {
+            item.title = title
+            item.representedObject = transcript
+            return
+        }
+        let item = NSMenuItem(
+            title: title,
+            action: #selector(copyLastTranscript(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = transcript
+        // Insert above "Last recording" if present, else above the Quit-area separator.
+        let menu = statusItem?.menu
+        if let recordingItem = lastRecordingItem,
+           let menu, let idx = menu.items.firstIndex(of: recordingItem) {
+            menu.insertItem(item, at: idx)
+        } else if let menu {
+            // Insert just before the final separator+Quit pair.
+            let insertAt = max(menu.items.count - 2, 0)
+            menu.insertItem(item, at: insertAt)
+        }
+        lastTranscriptItem = item
+    }
+
+    @MainActor
+    @objc private func copyLastTranscript(_ sender: NSMenuItem) {
+        guard let transcript = sender.representedObject as? String else { return }
+        copyTranscriptToPasteboard(transcript)
+    }
+
+    private static func lastTranscriptMenuTitle(for transcript: String) -> String {
+        let single = transcript.replacingOccurrences(of: "\n", with: " ")
+        let trimmed = single.count > 60
+            ? String(single.prefix(60)) + "…"
+            : single
+        return "Last transcript: \"\(trimmed)\" — Copied"
     }
 
     /// Briefly shows an error in the status row, then reverts to the idle title
