@@ -1,7 +1,7 @@
 ---
 type: memory-resume
 updated: 2026-04-27
-session_ended: end-of-session 2026-04-27 (PR #3 open awaiting review/merge)
+session_ended: end-of-session 2026-04-27 (PR #4 open awaiting review/merge)
 ---
 
 # Resume point
@@ -10,72 +10,81 @@ session_ended: end-of-session 2026-04-27 (PR #3 open awaiting review/merge)
 
 ## Active state at end of session
 
-- **Branch on disk**: `feat/hotkey-fn-trigger` (17 commits ahead of `main`, pushed, working tree clean).
-- **PR #3**: https://github.com/noelferrer/Diktador/pull/3 — **OPEN**, awaiting your review/merge.
-- **PR #2** (hotkey module + menu bar shell): merged earlier.
-- **PR #1** (workspace bootstrap + framework ADR): merged earlier.
-- **Build status**: `xcodebuild` Debug + Release green; `swift test` 8/8 pass (post-/simplify rerun).
+- **Branch on disk**: `feat/recorder-module`. Pushed. Working tree clean.
+- **PR #4**: https://github.com/noelferrer/Diktador/pull/4 — **OPEN**, awaiting your review/merge.
+- **PRs #1–#3**: merged earlier (workspace bootstrap, hotkey module + menu bar shell, Fn-key trigger + Input Monitoring permission flow).
+- **Build status**: `xcodebuild` Debug + Release green; `swift test` 9/9 (recorder) + 8/8 (hotkey) pass.
 - **App location** (Release): `~/Library/Developer/Xcode/DerivedData/Diktador-bgxnmdzjhoodkyaftdnhajichfan/Build/Products/Release/Diktador.app`.
+- **Debug artifact**: `/Applications/DiktadorDev.app` exists from this session's TCC-debugging (a copy with bundle ID `com.noelferrer.DiktadorDev`). Safe to delete after merge — it's not part of the PR; the production binary lives in DerivedData with the canonical `com.noelferrer.Diktador` bundle ID.
 
 ## Pending action from you (do before resuming)
 
-1. **Review and merge PR #3** if the diff looks right: `gh pr merge 3 --squash --delete-branch`, or via the GitHub UI.
-2. (After merge) `git checkout main && git pull origin main` so local `main` is synced before the next branch.
-
-`feat/*` → `main` merges via `gh pr merge` or the UI go through normal review and don't trip the workspace push-to-main hook.
+1. **Review and merge PR #4** if the diff looks right: `gh pr merge 4 --squash --delete-branch`, or via the GitHub UI.
+2. After merge: `git checkout main && git pull origin main` so local `main` is synced.
+3. (Optional) `rm -rf /Applications/DiktadorDev.app` — debug artifact from this session's TCC dance.
 
 ## What got built this session (skim)
 
-Two-session arc. Started with the spec + plan committed end of yesterday, paused mid-Phase-H, resumed and finished today.
+Single feature: `diktador-recorder` SwiftPM module + AppDelegate integration. Eighteen-plus commits. Subagent-driven cadence (implementer → spec reviewer → code-quality reviewer per phase) plus three runtime-discovered fixes during computer-use verification plus a /simplify pass.
 
-- **PR #3 (open)** — bare Fn (🌐) push-to-talk replaces Option+Space. `HotkeyRegistry` extended with a parallel NSEvent global-monitor + paired local-monitor path for `ModifierTrigger.fn` (Carbon-Events doesn't see Fn). New public types `ModifierTrigger`, `InputMonitoringStatus`. New permission API on the registry (`inputMonitoringPermission`, `requestInputMonitoringPermission(completion:)`) backed by an internal `PermissionProvider` seam wrapping `IOHIDCheckAccess` / `IOHIDRequestAccess`. `AppDelegate` rewired to a 3-state bootstrap (granted → register Fn; undetermined → request + recurse; denied → warning UI + deep-link to System Settings → Privacy & Security → Input Monitoring). 8/8 XCTest cases pass; xcodebuild Debug + Release green; computer-use verified the granted/denied/globe-key paths. /simplify pass landed 8 findings (image-factory dedupe, menu-item caching with double-insert guard, struct-construct cleanup, deinit cleanup, comment trims, test rename) — see today's daily for the full list.
-- **Subagent-driven cadence** (yesterday's session): six implementer dispatches across phases B–G, each followed by spec-compliance + code-quality reviewers. Zero BLOCKED / NEEDS_CONTEXT escalations.
-- **/simplify** (today's session): three review agents in parallel (reuse / quality / efficiency); convergent findings adopted, divergent ones skipped with explicit reasoning.
+- **Public surface**: `Recorder` class with `start() throws` / `stop(completion:)` / `isRecording`; `microphonePermission` getter + `requestMicrophonePermission(completion:)`. Value types `RecordingResult`, `MicrophonePermissionStatus`, `RecorderError`. Mirrors the hotkey module's permission-seam pattern.
+- **Internals**: `MicrophonePermissionProvider` protocol with `AVPermissionProvider` real impl; `AudioEngineDriver` protocol with `AVAudioEngineDriver` real impl (input-node tap, audio-thread buffer copy, main-queue dispatch); `SampleRateConverter` (lazy `AVAudioConverter` to 16 kHz mono Float32, signaling `.noDataNow` per call so the converter survives across buffers); `WAVWriter` (`AVAudioFile`-backed; rejects empty samples; 16 kHz mono 16-bit PCM).
+- **AppDelegate**: chained `bootstrapPushToTalk` → `checkMicrophonePermission` 3-state machine; Fn press/release call `recorder.start` / `recorder.stop`; "Last recording: X.Xs — Reveal in Finder" menu item updates in place; mic-denied state mirrors the existing Input-Monitoring-denied state.
+- **Hardened Runtime entitlement**: new `Diktador/Diktador.entitlements` with `com.apple.security.device.audio-input`; wired via `CODE_SIGN_ENTITLEMENTS` in `project.yml`. Without it, `AVCaptureDevice.requestAccess` silently denies and the app never appears in the Mic panel.
+- **Tests**: 9 XCTest cases covering permission, lifecycle, reentry guards, success path, engine-failure unwind, and write failure. Stubs (`StubPermissionProvider`, `StubAudioEngineDriver`) for hardware-free CI.
 
-Full retrospective lives in [`daily/2026-04-27.md`](daily/2026-04-27.md).
+Three runtime fixes worth remembering for future audio work — none of these were caught by unit tests:
+1. **Hardened Runtime requires the audio-input entitlement** for AVCaptureDevice/AVAudioEngine. No prompt, no panel entry, silent denial.
+2. **AVAudioEngine recycles its tap buffer** between callbacks. Must memcpy the float channel data on the audio thread before dispatching to main; otherwise main reads the latest buffer's data on every queued invocation.
+3. **AVAudioConverter `.endOfStream` terminates the stream**. For streaming usage (one tap buffer per `convert` call across many calls), the input-callback must signal `.noDataNow` instead. Symptom of regression: every recording is exactly one tap buffer worth of audio (~0.1s) regardless of duration held.
+
+The /simplify pass landed five focused fixes: extract `flashFailure(_:)` with generation-counter cancellation; drop `lastRecordingURL` in favor of `NSMenuItem.representedObject`; main-thread-only invariant comment in `handleBuffer`; `samples.reserveCapacity` for ~60s; collapse a redundant double-guard in `SampleRateConverter`.
+
+Full retrospective lives in [`daily/2026-04-27.md`](daily/2026-04-27.md) — to be appended in this session's daily note (currently still has only the Fn-trigger PR's retrospective; if a session-summary command is invoked, add a "## Recorder PR" section).
 
 ## What to do next session — pick one
 
-### Option A — Right-side modifiers PR ⭐ recommended next
+### Option A — Transcriber module ⭐ unblocks the actual app
 
-Same NSEvent global-monitor infrastructure that landed in PR #3 unblocks Right-Option-only / Right-Command-only / etc. — but the API surface is different: these are *sided variants* of `KeyCombo.modifiers`, not new `ModifierTrigger` cases. Likely shape: `KeyCombo` gains a `sidedness:` parameter (or a parallel `SidedKeyCombo` type), the registry routes sided combos through the NSEvent path. Requires its own brainstorm — the API decision (extend `KeyCombo` vs. new value type) is real and affects the future settings-module schema. Effort: ~60–90 min including ADR, plan, TDD, /simplify, PR. Probably warrants its own ADR.
+Reads the WAV files the recorder produces, runs them through WhisperKit (default) or Groq (user-selectable cloud fallback), produces a `String` transcript. The hotkey module + recorder module now provide everything needed: hotkey says "start/stop", recorder produces a 16 kHz mono PCM WAV at the WhisperKit-ready format. Adding the transcriber gets us *most* of the way to the dictation user experience — only the output module (text injection at cursor) would remain. Effort: ~90–120 min including ADR (model selection — `tiny` / `base` / `small`), download bootstrap (first-run model fetch), spec, plan, TDD, /simplify, PR.
 
-Open question filed in [`domains/hotkey.md`](domains/hotkey.md): right-modifier API shape.
+Open question filed in [`domains/recorder.md`](domains/recorder.md): VAD integration (continuous-listening; not push-to-talk).
 
-### Option B — Recorder module ⭐ unblocks the actual app
+### Option B — Output module
 
-`AVAudioEngine` capture + VAD (voice activity detection). The hotkey module already provides the `setListening(true/false)` semantic via the v1 push-to-talk; `recorder` consumes it to start/stop buffering. First piece of the actual audio pipeline — required before the user can experience real dictation. Module README convention per `AGENTS.md`. Mic permission (`NSMicrophoneUsageDescription` is already declared in `project.yml`) prompts on first capture.
+Text injection at cursor — Accessibility-permission flow + clipboard-paste + CGEvent fallback. Pairs with the recorder via the (not-yet-existing) transcriber: recorder → transcriber → output → text appears at the cursor. Without the transcriber, output has no consumer; ship transcriber first.
 
-### Option C — Three modules together (recorder + transcriber + output)
+### Option C — Bundle: transcriber + output
 
-Bigger PR; delivers the "talk → see typed text" UX in one shot. Riskier; not recommended without each piece's own brainstorm + spec.
+Bigger PR, delivers the full "talk → see typed text" UX in one shot. Riskier; recommended only after each piece's own brainstorm + spec.
 
-The user expected dictation-typing-text behavior at the end of PR #2 and was reminded that the transcription pipeline doesn't exist yet. **Options B + C deliver that experience.** Option A delivers a smaller polish on the trigger surface.
+**Recommendation: Option A.** It's the largest single user-visible step from "icon flips and a debug WAV is saved" toward "speech is transcribed and visible". Output then completes the loop.
 
 ## Key files to load on resume (in order)
 
 1. **This file** — `memory/resume.md`
-2. `wiki/index.md` — workspace catalog (now: 2 decisions, 1 howto)
-3. `memory/general.md` — operational facts (env, conventions, current open questions)
+2. `wiki/index.md` — workspace catalog (now: 3 decisions, 1 module, 1 howto)
+3. `memory/general.md` — operational facts
 4. Last ~10 entries of `log.md` — recent activity
-5. If picking Option A: `memory/domains/hotkey.md` Open questions section + `wiki/decisions/hotkey-modifier-only-trigger.md` for the ratified dual-path architecture (the right-modifier ADR will reference it)
-6. If picking Option B: re-read `wiki/decisions/framework-choice.md` for the agreed STT pipeline shape (WhisperKit + optional Groq); check `Diktador/AppDelegate.swift` for where the `setListening(true/false)` callback lives so the recorder can subscribe
+5. If picking Option A: `wiki/decisions/framework-choice.md` (locks WhisperKit + Groq), `wiki/decisions/recorder-capture-pipeline.md` (locks 16 kHz mono WAV format), `memory/domains/recorder.md` (recorder open questions including VAD deferral).
+6. If picking Option B: `wiki/decisions/framework-choice.md` (locks hybrid clipboard-paste + CGEvent fallback for text injection).
 
 `AGENTS.md` (the schema) and the framework ADR auto-load via the project `CLAUDE.md` symlink.
 
 ## Sharp edges to remember
 
-- **No pushing to `main` directly** — workspace hook blocks it. Bootstrap exception was one-time. PRs merge through `gh pr merge`.
-- **macOS only shows the Input Monitoring consent prompt once per app-bundle/user pair.** If you've already clicked Allow or Deny on a prior build, the granted/denied state is cached and `IOHIDRequestAccess` returns immediately. To re-test the undetermined-state path, either change the bundle ID or reset privacy via `tccutil reset ListenEvent com.noelferrer.Diktador`.
-- **macOS `Press 🌐 to` setting must be "Do nothing"** for bare-Fn push-to-talk to work without firing Apple's globe action. Documented in `wiki/howtos/first-run-setup.md`.
-- **NSEvent monitor handles aren't ARC-managed.** The `unregister` path and the new `deinit` both call `NSEvent.removeMonitor`. If a future caller drops the registry without unregistering first, `deinit` is the safety net.
-- **SwiftPM identity collision** — local-package directory name lowercased = identity. If it matches a transitive dep's URL identity, `swift package resolve` silently fails. Fix: rename the consuming directory. (See `modules/diktador-hotkey/README.md` for the full case.)
-- **APFS case-insensitivity** — `Hotkey.swiftmodule` vs `HotKey.swiftmodule` collapse to the same file, overwriting our build output. Same family of fix.
-- **`HotKey.Key` qualifier ambiguity** — `HotKey` exports both a class and an enum at module scope, so the qualifier is ambiguous. Workaround already in `KeyCombo.swift`: `@_exported import enum HotKey.Key`.
-- **Xcode is required for any Swift app build** — Command Line Tools alone don't have `xcodebuild`. Currently installed: Xcode 26.4.1 (licensed).
-- **Workspace `/go` skill** at `.claude/skills/go/SKILL.md` is the ship cycle. Used for PR #3 (Phase H2–H4 in the plan map onto /go's Phases 1–3); the post-ship `log.md` + `memory/daily/` updates land as Phase 4 hygiene.
+- **No pushing to `main` directly** — workspace hook blocks it. PRs merge through `gh pr merge`.
+- **Rebuilding ad-hoc-signed apps invalidates TCC grants.** Each rebuild gets a new codesign hash; macOS treats it as a new binary for TCC purposes. Toggle Diktador OFF and ON in System Settings → Input Monitoring (and Microphone) after each rebuild during development. `tccutil reset Microphone com.noelferrer.Diktador` purges the entry entirely if the toggle dance fails.
+- **`com.apple.security.device.audio-input` entitlement is now load-bearing.** It lives in `Diktador/Diktador.entitlements` and is wired through `CODE_SIGN_ENTITLEMENTS` in `project.yml`. Removing it = silent mic denial; do not delete.
+- **`AVAudioEngine` tap callbacks fire on the Core Audio thread**, not main. The driver hops to main internally; if you write a different tap, copy the buffer first.
+- **`AVAudioConverter` `.endOfStream` is permanent.** For streaming, signal `.noDataNow` and reuse the converter across calls.
+- **macOS `Press 🌐 to` setting must be "Do nothing"** for bare-Fn push-to-talk to work without firing Apple's globe action (from PR #3).
+- **macOS only shows each TCC consent prompt once per app-bundle/user pair.** Re-trigger by changing the bundle ID or running `tccutil reset <Service> <bundle-id>`.
+- **NSEvent monitor handles aren't ARC-managed** (from PR #3). The hotkey module's `unregister` and `deinit` both call `NSEvent.removeMonitor`.
+- **Workspace `/go` skill** at `.claude/skills/go/SKILL.md` is the ship cycle. Used for PR #4 (Phase I2–I4 in the plan map onto /go's Phases 1–3); the post-ship `log.md` + `memory/daily/` updates land as Phase 4 hygiene.
 - **`/simplify` 3-agent convergence pattern**: when reuse + efficiency or quality + efficiency flag the same finding, that's high signal and worth fixing. Single-agent flags are usually defensible-as-is.
-- **`pushToTalkToken`** in `AppDelegate` is held for hygiene but never read in v1. The settings module will read + unregister + re-register when the user changes the trigger.
+- **`pushToTalkToken`** in `AppDelegate` is held for hygiene but never read in v1 (from PR #3). The settings module will read + unregister + re-register when the user changes the trigger.
+- **`/Applications/DiktadorDev.app`** is a session-debug artifact (different bundle ID for TCC isolation during this PR). Not part of the canonical install. Safe to delete.
 
 ## Auto-memory note
 
