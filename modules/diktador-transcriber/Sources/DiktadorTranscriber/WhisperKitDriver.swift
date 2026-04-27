@@ -22,6 +22,7 @@ internal final class LiveWhisperKitDriver: WhisperKitDriver, @unchecked Sendable
         )
         let config = WhisperKitConfig(
             model: name,
+            downloadBase: modelStorage,
             modelRepo: "argmaxinc/whisperkit-coreml",
             verbose: false,
             logLevel: .error,
