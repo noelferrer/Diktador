@@ -84,10 +84,11 @@ Append-only chronological record. Every entry begins with `## [YYYY-MM-DD] <op> 
 - Open questions filed in the ADR: right-modifier API shape (sided variant of KeyCombo.modifiers vs new enum); conflict detection still v2.
 
 ## [2026-04-27] meta | Fn-key trigger shipped — PR #3
-- PR: <fill in URL after gh pr create>
-- Modules touched: modules/diktador-hotkey/ (new files: ModifierTrigger, InputMonitoringStatus, PermissionProvider; HotkeyRegistry extended; tests +3)
+- PR: https://github.com/noelferrer/Diktador/pull/3
+- Modules touched: modules/diktador-hotkey/ (new files: ModifierTrigger, InputMonitoringStatus, PermissionProvider; HotkeyRegistry extended; tests +3); Diktador/ app target (AppDelegate rewired)
 - Plan executed: docs/superpowers/plans/2026-04-27-hotkey-fn-trigger.md (8 phases A–H, all done)
-- Tests run: xcodebuild Debug + Release BUILD SUCCEEDED; swift test 8/8 cases pass; computer-use verification confirmed bare-Fn press flips the menu bar icon between mic and mic.fill, and the denied-state path surfaces the warning icon + Open Input Monitoring settings… menu item.
-- Simplify changes: <fill in after /simplify pass>
+- Tests run: xcodebuild Debug + Release BUILD SUCCEEDED; swift test 8/8 cases pass; computer-use verification confirmed bare-Fn press flips the menu bar icon between mic and mic.fill, the denied-state path surfaces the warning icon + Open Input Monitoring settings… menu item, and the globe-key sanity path confirmed the Press 🌐 to: Do nothing user setup is required.
+- Simplify changes: 8 findings adopted in commit d58a5e7 — AppDelegate image-factory dedupe (templateSymbol helper) + static var → static let; AppDelegate menu-item caching (statusRowItem + openSettingsItem) with double-insert guard; HotkeyRegistry construct ModifierMonitorEntry once with handles populated; HotkeyRegistry drop "— unchanged from PR #2" + WHAT-only doc comment on internal init; HotkeyRegistry one-line invariant comment naming global-vs-local non-overlap; HotkeyRegistry deinit removes still-registered NSEvent monitors; HotkeyRegistry handleFlagsChanged extracts callback to local var before invoke; tests rename test_modifierTrigger_isHashableAndDistinguishesCases → test_modifierTrigger_isHashable.
+- Naming deviations from plan: none.
 - Notes: AppDelegate push-to-talk swapped from Option+Space to bare Fn. Option+Space dropped from v1 default; settings module will reintroduce user choice.
 - Required user setup documented in wiki/howtos/first-run-setup.md: System Settings → Keyboard → Press 🌐 to: Do nothing.
