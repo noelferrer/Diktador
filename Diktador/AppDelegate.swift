@@ -1,6 +1,7 @@
 import AppKit
 import DiktadorHotkey
 import DiktadorRecorder
+import DiktadorTranscriber
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let idleTitle = "Diktador (idle)"
@@ -9,6 +10,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let microphoneNeededTitle = "Diktador (needs Microphone)"
     private static let openInputMonitoringSettingsTitle = "Open Input Monitoring settings…"
     private static let openMicrophoneSettingsTitle = "Open Microphone settings…"
+    private static let transcriberLoadingTitle = "Transcription: loading model…"
+    private static let transcriberReadyTitle = "Transcription: ready"
+    private static let transcriberTranscribingTitle = "Transcription: transcribing…"
+    private static let transcriberFailedTitle = "Transcription: model unavailable — see Console"
+    private static let transcriberInferenceFailedTitle = "Transcription failed — see Console"
+    private static let transcriberNoSpeechTitle = "Transcription: no speech detected"
 
     private static let inputMonitoringPaneURL = URL(
         string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
@@ -22,15 +29,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var openInputMonitoringSettingsItem: NSMenuItem?
     private var openMicrophoneSettingsItem: NSMenuItem?
     private var lastRecordingItem: NSMenuItem?
+    private var transcriberStatusItem: NSMenuItem?
+    private var lastTranscriptItem: NSMenuItem?
+    private var lastTranscript: String?
     private var statusFlashGeneration: Int = 0
 
     private let hotkeys = HotkeyRegistry()
     private let recorder = Recorder()
+    @MainActor private lazy var transcriber = WhisperKitTranscriber()
     private var pushToTalkToken: HotkeyRegistry.RegistrationToken?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureStatusItem()
         bootstrapPushToTalk()
+        Task { @MainActor [weak self] in
+            await self?.loadTranscriptionModel()
+        }
+    }
+
+    @MainActor
+    private func loadTranscriptionModel() async {
+        transcriberStatusItem?.title = Self.transcriberLoadingTitle
+        do {
+            try await transcriber.loadModel()
+            transcriberStatusItem?.title = Self.transcriberReadyTitle
+        } catch {
+            transcriberStatusItem?.title = Self.transcriberFailedTitle
+            NSLog("[app] transcriber.loadModel failed: \(error)")
+        }
     }
 
     private func configureStatusItem() {
@@ -40,6 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         let statusRow = NSMenuItem(title: Self.idleTitle, action: nil, keyEquivalent: "")
         menu.addItem(statusRow)
+        menu.addItem(.separator())
+        let transcriberStatus = NSMenuItem(title: Self.transcriberLoadingTitle, action: nil, keyEquivalent: "")
+        menu.addItem(transcriberStatus)
+        self.transcriberStatusItem = transcriberStatus
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(
             title: "Quit",
