@@ -232,6 +232,39 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(transcriber.state, .ready)
     }
 
+    @MainActor
+    func test_loadModel_concurrentFailures_bothCallersGetModelLoadFailed() async throws {
+        struct DriverFailure: Error { let detail: String }
+        let driver = StubWhisperKitDriver()
+        driver.loadModelDelay = 50_000_000  // 50 ms — long enough that B is a real waiter
+        driver.loadModelError = DriverFailure(detail: "concurrent boom")
+        let transcriber = WhisperKitTranscriber(driver: driver)
+
+        async let a: Void = transcriber.loadModel()
+        async let b: Void = transcriber.loadModel()
+
+        var aError: Error?
+        var bError: Error?
+        do { try await a } catch { aError = error }
+        do { try await b } catch { bError = error }
+
+        if case .modelLoadFailed(let aMessage) = (aError as? TranscriberError) {
+            XCTAssertTrue(aMessage.contains("concurrent boom"), "got: \(aMessage)")
+        } else {
+            XCTFail("caller A got unexpected error: \(String(describing: aError))")
+        }
+        if case .modelLoadFailed(let bMessage) = (bError as? TranscriberError) {
+            XCTAssertTrue(bMessage.contains("concurrent boom"), "got: \(bMessage)")
+        } else {
+            XCTFail("caller B got unexpected error: \(String(describing: bError))")
+        }
+
+        XCTAssertEqual(driver.loadModelCalls.count, 1, "must only call driver once even when failing")
+        if case .failed(.modelLoadFailed) = transcriber.state { /* ok */ } else {
+            XCTFail("expected .failed state, got \(transcriber.state)")
+        }
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"

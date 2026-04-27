@@ -56,19 +56,22 @@ public final class WhisperKitTranscriber: Transcriber {
             return
         }
         state = .loading
-        let task = Task<Void, Error> { [self, modelName, modelStorage] in
-            try await driver.loadModel(name: modelName, modelStorage: modelStorage)
+        // The task body handles state transitions and error mapping itself,
+        // so concurrent waiters on `task.value` see identical throw semantics
+        // (same .modelLoadFailed wrapping, same observed state after the throw).
+        let task = Task<Void, Error> { @MainActor in
+            do {
+                try await self.driver.loadModel(name: self.modelName, modelStorage: self.modelStorage)
+                self.state = .ready
+            } catch {
+                let mapped = TranscriberError.modelLoadFailed(message: String(describing: error))
+                self.state = .failed(mapped)
+                throw mapped
+            }
         }
         inFlightLoad = task
         defer { inFlightLoad = nil }
-        do {
-            try await task.value
-            state = .ready
-        } catch {
-            let mapped = TranscriberError.modelLoadFailed(message: String(describing: error))
-            state = .failed(mapped)
-            throw mapped
-        }
+        try await task.value
     }
 
     public func transcribe(audioFileURL: URL) async throws -> String {

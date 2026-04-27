@@ -10,6 +10,11 @@ public enum TranscriberState: Sendable, Equatable {
 }
 
 /// Errors a transcriber can throw.
+///
+/// `message` for `.modelLoadFailed` and `.transcriptionFailed` is
+/// `String(describing: underlyingError)` so this enum stays `Equatable`. If
+/// structured downstream handling of underlying errors is later required,
+/// add a separate associated value rather than dropping `Equatable`.
 public enum TranscriberError: Error, Sendable, Equatable {
     case modelLoadFailed(message: String)
     case transcriptionFailed(message: String)
