@@ -95,10 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try recorder.start()
         } catch {
+            setListening(false)
             NSLog("[app] recorder.start failed: \(error)")
             statusRowItem?.title = "Recording failed: \(error)"
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-                self?.setListening(self?.recorder.isRecording == true)
+                self?.statusRowItem?.title = Self.idleTitle
             }
         }
     }
