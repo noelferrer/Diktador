@@ -10,8 +10,9 @@ session_ended: 2026-04-27 PR #6 merged (transcriber module shipped; output modul
 
 ## Active state at end of session
 
-- **Branch on disk**: `main`, clean, synced with `origin/main` at commit `9c11941`.
+- **Branch on disk**: `main`, clean, synced with `origin/main` at commit `0d1d076`.
 - **PR #6** (transcriber module): **MERGED** — `9c11941` Transcriber module — WhisperKit transcription with clipboard-copy debug surface (#6).
+- **PR #7** (post-PR-#6 resume cleanup): **MERGED** — `0d1d076` memory/resume: clean handoff after PR #6 merge (#7).
 - **PRs #1–#5**: merged earlier (workspace bootstrap, hotkey module + menu bar shell, Fn trigger + Input Monitoring, recorder module + WAV-to-disk debug surface, post-PR-#4 resume).
 - **Build status**: `xcodebuild` Debug + Release green; `swift test` 15/15 (transcriber) + 9/9 (recorder) + 8/8 (hotkey) pass.
 - **App location** (Release): `~/Library/Developer/Xcode/DerivedData/Diktador-bgxnmdzjhoodkyaftdnhajichfan/Build/Products/Release/Diktador.app`.
