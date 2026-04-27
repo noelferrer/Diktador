@@ -6,6 +6,9 @@ import Foundation
 public final class WhisperKitTranscriber: Transcriber {
     public static let defaultModelName = "openai_whisper-base"
 
+    /// Base directory used as `WhisperKitConfig.downloadBase`. WhisperKit
+    /// places model files at `<base>/models/<modelRepo>/<modelName>/`, so the
+    /// final on-disk path is `~/Library/Application Support/Diktador/models/argmaxinc/whisperkit-coreml/openai_whisper-base/`.
     /// `nonisolated` because Swift 6 strict concurrency disallows calling a
     /// MainActor-isolated static func from a default-argument expression in a
     /// nonisolated context (the internal init's `modelStorage:` default).
@@ -15,9 +18,7 @@ public final class WhisperKitTranscriber: Transcriber {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first!
-        return appSupport
-            .appendingPathComponent("Diktador", isDirectory: true)
-            .appendingPathComponent("models", isDirectory: true)
+        return appSupport.appendingPathComponent("Diktador", isDirectory: true)
     }
 
     private let driver: WhisperKitDriver
