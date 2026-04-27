@@ -76,8 +76,8 @@ Pages that exist as stubs and want filling, plus pages that probably should exis
 - _Proposed_: page on **fan wikis as exemplars** (Tolkien Gateway, Memory Alpha) — referenced in [[sources/llm-wiki-pattern]].
 - _Proposed_: synthesis page **personal-knowledge-bases** once a second comparable source enters.
 - _Proposed_: entity page on **typr** ([[entities/typr]]) — load-bearing across the workspace (architecture reference, even after the framework swap).
-- _Proposed_: entity page on **WhisperKit** ([[entities/whisperkit]]) — referenced from [[decisions/framework-choice]]; promote to entity when a second page references it.
-- _Proposed_: entity page on **Swift / SwiftUI / AVFoundation / CGEvent** — same rule, create when a second page references each.
+- _Proposed_: entity page on **WhisperKit** ([[entities/whisperkit]]) — second-reference threshold reached (now referenced from [[decisions/framework-choice]], [[decisions/transcriber-pipeline]], [[modules/transcriber]]); create on next entity-pass.
+- _Proposed_: entity pages on **Swift / SwiftUI / CGEvent** — same rule, create when a second page references each. **AVFoundation** has reached the second-reference threshold (referenced from [[decisions/framework-choice]], [[decisions/recorder-capture-pipeline]], [[modules/recorder]]); create on next entity-pass.
 - _Proposed_: entity page on **Groq** — same rule.
 - _Proposed_: concept page on **dictation-latency-budget** — STT dominates total latency; framework overhead is ~10–20% of the budget. Referenced in [[decisions/framework-choice]] alternatives section.
 - _Dropped_: entity page on **Tauri** — was proposed under the prior assumption; no longer load-bearing after the Swift decision.

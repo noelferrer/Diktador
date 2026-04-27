@@ -32,6 +32,8 @@ State machine:
                      └─→ .failed(...)   (sticky; restart to retry)
 ```
 
+`.failed` is reached only via `loadModel()` failures — including the implicit `loadModel()` invoked from inside `transcribe()` when state is `.uninitialized` or `.loading`. Once sticky-failed, both `loadModel()` and `transcribe()` reject without re-attempting; restart the app to retry.
+
 `loadModel` is idempotent and concurrent-safe via an in-flight `Task` reference; `transcribe` from `.uninitialized` drives `loadModel` implicitly.
 
 ## Dependencies

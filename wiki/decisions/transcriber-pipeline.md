@@ -71,3 +71,4 @@ Three questions surfaced during this PR's brainstorming:
 - [[decisions/recorder-capture-pipeline]] — sibling ADR; locks the WAV format the transcriber consumes; defers VAD to here.
 - [[decisions/hotkey-modifier-only-trigger]] — sibling ADR; establishes the dual-init test-seam pattern this module follows.
 - WhisperKit (Argmax OSS Swift): https://github.com/argmaxinc/argmax-oss-swift
+- WhisperKit prewarm semantics: `argmax-oss-swift/Sources/WhisperKit/Core/Configurations.swift:55-66` (load-unload-load Core ML specialization warm-up trade-off).
