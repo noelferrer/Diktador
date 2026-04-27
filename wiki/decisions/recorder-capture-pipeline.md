@@ -39,6 +39,9 @@ Two questions surfaced during this PR's brainstorming:
 - **Two permission prompts on first launch.** Input Monitoring then Microphone, in sequence. Acceptable: Diktador needs both to function.
 - **Reveal-in-Finder is a real feature, not just a debug knob.** Users will find utility in being able to keep recordings beyond a single session. The future settings module can add a "delete after transcription" toggle without removing this surface.
 - **The recorder doesn't know about the transcriber.** It produces a WAV file; whoever consumes it decides what to do. Clean separation; matches the six modular rules.
+- **Hardened Runtime requires the `com.apple.security.device.audio-input` entitlement.** Without it, `AVCaptureDevice.requestAccess` silently denies and the Microphone consent prompt never appears. The entitlement is checked into `Diktador/Diktador.entitlements` and wired via `CODE_SIGN_ENTITLEMENTS` in `project.yml`. Discovered during PR #4's computer-use verification — unit tests cannot catch this because they stub the permission provider.
+- **Tap-buffer ownership is short-lived.** AVAudioEngine recycles the tap-callback's `AVAudioPCMBuffer` for the next callback; `AVAudioEngineDriver` copies the float channel data on the audio thread before dispatching to main. Without the copy every queued buffer reads the most-recent buffer's data at processing time. Also discovered live; the stub `AudioEngineDriver` doesn't reuse buffers so unit tests pass either way.
+- **`AVAudioConverter` is a stream, not a request/response API.** The streaming-input callback must signal `.noDataNow` (not `.endOfStream`) at the end of each per-call input segment; `.endOfStream` permanently terminates the converter and silently produces zero output frames on every subsequent call. A converter held across multiple buffers can stay alive across the whole recording session.
 
 ## Alternatives considered
 

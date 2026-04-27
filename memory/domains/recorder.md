@@ -35,6 +35,10 @@ Public surface and failure modes live in [`modules/diktador-recorder/README.md`]
 - `stop` returns `.fileWriteFailed`: check `~/Library/Application Support/Diktador/recordings/` exists and is writable. The recorder creates intermediate directories on write but cannot recover from a sandbox-blocked path.
 - `stop` returns `.fileWriteFailed` with `samples.count` near zero: the recording was too short to capture a single 4096-sample tap buffer. Hold Fn longer.
 - `stop` returns immediately with `.notRecording`: the `start` likely threw silently — check the press-handler's error log for `[app] recorder.start failed`.
+- Mic consent prompt never appears AND Diktador isn't listed in System Settings → Privacy & Security → Microphone: missing `com.apple.security.device.audio-input` entitlement. Hardened Runtime suppresses the prompt when the entitlement is absent. Verify with `codesign -d --entitlements - /path/to/Diktador.app`.
+- Every recording is exactly ~0.1s (one tap buffer) regardless of how long Fn was held: regression of the `SampleRateConverter` `.noDataNow` signal — `.endOfStream` would terminate the converter after the first buffer and silently produce zero-length output for every subsequent buffer.
+- Recording captures only the most recent buffer's worth of data (intermittent garbage tail): regression of the `AVAudioEngineDriver` tap-buffer copy — the engine reuses its tap buffer between callbacks; the driver must copy the float channel data on the audio thread before dispatching to main.
+- Re-grant TCC on every rebuild: ad-hoc-signed apps (`CODE_SIGN_IDENTITY: "-"`) get a fresh codesign hash on every build, and macOS treats each new hash as a different binary for TCC purposes. Toggle Diktador OFF and ON in System Settings → Input Monitoring (and Microphone) after each rebuild during dev. `tccutil reset Microphone com.noelferrer.Diktador` purges the entry entirely if the toggle dance fails.
 
 ## See also
 
