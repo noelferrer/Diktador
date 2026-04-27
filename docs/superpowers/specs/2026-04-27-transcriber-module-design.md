@@ -241,18 +241,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 ### Menu order
 
+Initial state (post-`configureStatusItem`, before any recording or transcription):
+
 ```
 Diktador (idle | listening… | needs Input Monitoring | needs Microphone)
 ─── (separator)
-Transcription: <Loading… | Ready | Transcribing… | Model unavailable | …>   [disabled label]
-Last transcript: "<first 60 chars>…" — Copied   [click re-copies]            [hidden until first success]
-─── (separator)
-Last recording: 2.3s — Reveal in Finder           [hidden until first success, existing]
+Transcription: loading model… | ready | transcribing… | …       [disabled label]
 ─── (separator)
 Quit
 ```
 
-`updateLastTranscriptItem` lazily inserts the menu item the first time it is needed (matches `lastRecordingItem`'s pattern). Truncation at 60 chars uses a single-line title; the full transcript is on the clipboard.
+After first successful recording + transcription (steady state):
+
+```
+Diktador (idle)
+Last transcript: "<first 60 chars>…" — Copied   [click re-copies]
+Last recording: 2.3s — Reveal in Finder
+─── (separator)
+Transcription: ready                              [disabled label]
+─── (separator)
+Quit
+```
+
+`lastRecordingItem` retains its PR #4 placement (inserted at index 1, just below the status row). `lastTranscriptItem` is inserted above `lastRecordingItem` when present, so recent activity sits at the top of the menu. The transcription status line stays in its own section below the activity items. Truncation at 60 chars uses a single-line title; the full transcript is on the clipboard.
 
 ## Testing
 
