@@ -10,9 +10,12 @@
 		5532D5476F8271F3F0D2EEF4 /* DiktadorHotkey in Frameworks */ = {isa = PBXBuildFile; productRef = 1FACB9F9879D227F1D01FFBE /* DiktadorHotkey */; };
 		CBED9DB25384FA74E8C14718 /* DiktadorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFDBCE24FE97B198D07E2EF6 /* DiktadorApp.swift */; };
 		E64C4EC48A610C142111E826 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F04E0887D935D9A8890DE88 /* AppDelegate.swift */; };
+		F7DCCD94179810AD16189C29 /* DiktadorRecorder in Frameworks */ = {isa = PBXBuildFile; productRef = DA6475465A7FEAF3CA1EB215 /* DiktadorRecorder */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		441F116FEF9B7FFA23B3D88A /* diktador-recorder */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "diktador-recorder"; path = "modules/diktador-recorder"; sourceTree = SOURCE_ROOT; };
+		4533454C2C6EB1D49E9687BE /* Diktador.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Diktador.entitlements; sourceTree = "<group>"; };
 		5F04E0887D935D9A8890DE88 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A21310CA90623730919F9A3E /* diktador-hotkey */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "diktador-hotkey"; path = "modules/diktador-hotkey"; sourceTree = SOURCE_ROOT; };
 		BFA7F30F0BFCD6F60F1A9A8B /* Diktador.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Diktador.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -25,6 +28,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5532D5476F8271F3F0D2EEF4 /* DiktadorHotkey in Frameworks */,
+				F7DCCD94179810AD16189C29 /* DiktadorRecorder in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -43,6 +47,7 @@
 			isa = PBXGroup;
 			children = (
 				5F04E0887D935D9A8890DE88 /* AppDelegate.swift */,
+				4533454C2C6EB1D49E9687BE /* Diktador.entitlements */,
 				FFDBCE24FE97B198D07E2EF6 /* DiktadorApp.swift */,
 			);
 			path = Diktador;
@@ -61,6 +66,7 @@
 			isa = PBXGroup;
 			children = (
 				A21310CA90623730919F9A3E /* diktador-hotkey */,
+				441F116FEF9B7FFA23B3D88A /* diktador-recorder */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -82,6 +88,7 @@
 			name = Diktador;
 			packageProductDependencies = (
 				1FACB9F9879D227F1D01FFBE /* DiktadorHotkey */,
+				DA6475465A7FEAF3CA1EB215 /* DiktadorRecorder */,
 			);
 			productName = Diktador;
 			productReference = BFA7F30F0BFCD6F60F1A9A8B /* Diktador.app */;
@@ -113,6 +120,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				FE09E07320DCCECF43AB0AFC /* XCLocalSwiftPackageReference "modules/diktador-hotkey" */,
+				8D8C79E7C14E0B076DF5C883 /* XCLocalSwiftPackageReference "modules/diktador-recorder" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1F377D0E6B8A9BC76F90B41D /* Products */;
@@ -141,6 +149,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Diktador/Diktador.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -291,6 +300,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Diktador/Diktador.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -334,6 +344,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		8D8C79E7C14E0B076DF5C883 /* XCLocalSwiftPackageReference "modules/diktador-recorder" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "modules/diktador-recorder";
+		};
 		FE09E07320DCCECF43AB0AFC /* XCLocalSwiftPackageReference "modules/diktador-hotkey" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "modules/diktador-hotkey";
@@ -344,6 +358,10 @@
 		1FACB9F9879D227F1D01FFBE /* DiktadorHotkey */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DiktadorHotkey;
+		};
+		DA6475465A7FEAF3CA1EB215 /* DiktadorRecorder */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DiktadorRecorder;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

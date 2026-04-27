@@ -92,3 +92,23 @@ Append-only chronological record. Every entry begins with `## [YYYY-MM-DD] <op> 
 - Naming deviations from plan: none.
 - Notes: AppDelegate push-to-talk swapped from Option+Space to bare Fn. Option+Space dropped from v1 default; settings module will reintroduce user choice.
 - Required user setup documented in wiki/howtos/first-run-setup.md: System Settings → Keyboard → Press 🌐 to: Do nothing.
+
+## [2026-04-27] document | ADR — Recorder capture pipeline + module page
+- Created: wiki/decisions/recorder-capture-pipeline.md (status: stable)
+- Created: wiki/modules/recorder.md
+- Created: memory/domains/recorder.md
+- Updated: wiki/index.md (Decisions 2→3; Modules 0→1)
+- Decision: v1 recorder is pure capture (no VAD); in-process AVAudioConverter to 16 kHz mono Float32; WAV-to-disk at ~/Library/Application Support/Diktador/recordings/. Test seam = MicrophonePermissionProvider + AudioEngineDriver protocols. AppDelegate chains Microphone permission after Input Monitoring. AVAudioEngineDriver hops tap to main to honor the recorder's documented main-thread contract.
+- Open questions filed in the ADR + memory note: VAD integration (transcriber-PR concern); streaming chunks (transcriber-PR concern); multi-input device selection (settings-module concern); retention policy (settings-module concern); SampleRateConverter test seam (deferred unless needed).
+
+## [2026-04-27] meta | Recorder module shipped — PR #4
+- PR: https://github.com/noelferrer/Diktador/pull/4
+- Modules touched: modules/diktador-recorder/ (new package: Recorder, RecordingResult, MicrophonePermissionStatus, RecorderError, MicrophonePermissionProvider, AudioEngineDriver, SampleRateConverter, WAVWriter; tests +9); Diktador/ app target (AppDelegate dual-permission bootstrap + recording on Fn press/release + Last Recording menu item; new Diktador.entitlements); project.yml + Diktador.xcodeproj/ (new package dep + CODE_SIGN_ENTITLEMENTS).
+- Plan executed: docs/superpowers/plans/2026-04-27-recorder-module.md (9 phases A–I, all done)
+- Tests run: xcodebuild Debug + Release BUILD SUCCEEDED; swift test 9/9 cases pass; computer-use verification confirmed bare-Fn hold records audio (4.8s and 9.97s WAVs from 5s and 10s holds), "Last recording: X.Xs — Reveal in Finder" appears in the menu and updates in place, and QuickLook playback of the WAV plays the user's voice.
+- Runtime fixes discovered during computer-use (3 commits before /simplify): com.apple.security.device.audio-input entitlement (Hardened Runtime suppresses the Mic consent prompt without it); AVAudioEngine tap-buffer copy on the audio thread + outputFormat-instead-of-inputFormat for the tap (engine recycles its tap buffer between callbacks); AVAudioConverter .noDataNow not .endOfStream (.endOfStream terminates the converter, every subsequent append produces zero output — symptom: every recording was exactly one tap buffer ~0.1s regardless of duration held).
+- Simplify changes: 5 findings adopted in commit 5e625b0 — AppDelegate flashFailure(_:) helper with generation-counter cancellation; drop lastRecordingURL in favor of NSMenuItem.representedObject; Recorder.handleBuffer "must run on main" invariant comment; Recorder samples accumulator reserveCapacity for ~60s; SampleRateConverter drop redundant double-guard on converter.
+- Naming deviations from plan: none (the temporary com.noelferrer.DiktadorDev bundle ID swap during TCC-debug was reverted before commit; ships with the canonical com.noelferrer.Diktador).
+- Notes: VAD deferred to transcriber PR. AppDelegate now requests Microphone permission on first launch after Input Monitoring resolves to .granted. Tap callback hopped to main to make the recorder's main-thread-only contract real.
+- Required user setup unchanged: System Settings → Keyboard → Press 🌐 to: Do nothing (from PR #3); plus Allow on the new Microphone consent prompt.
+- Dev-time gotcha: rebuilding an ad-hoc-signed app changes the codesign hash, which invalidates TCC grants. Toggle Diktador OFF/ON in System Settings → Input Monitoring (and Microphone) after each rebuild during development. `tccutil reset Microphone com.noelferrer.Diktador` purges the entry entirely if needed.
