@@ -113,6 +113,36 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(transcriber.state, .ready)
     }
 
+    @MainActor
+    func test_transcribe_emptyResult_throwsEmptyTranscript_andStaysReady() async throws {
+        let driver = StubWhisperKitDriver()
+        driver.transcribeResult = ""
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        try await transcriber.loadModel()
+
+        do {
+            _ = try await transcriber.transcribe(audioFileURL: Self.tempAudioFile())
+            XCTFail("expected emptyTranscript")
+        } catch TranscriberError.emptyTranscript {
+            // expected
+        }
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
+    @MainActor
+    func test_transcribe_whitespaceOnlyResult_throwsEmptyTranscript() async throws {
+        let driver = StubWhisperKitDriver()
+        driver.transcribeResult = "   \n\t  "
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        try await transcriber.loadModel()
+
+        do {
+            _ = try await transcriber.transcribe(audioFileURL: Self.tempAudioFile())
+            XCTFail("expected emptyTranscript")
+        } catch TranscriberError.emptyTranscript { /* expected */ }
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
