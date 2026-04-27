@@ -63,7 +63,11 @@ public final class Recorder {
             throw RecorderError.microphonePermissionDenied
         }
 
-        let samples: [Float] = []
+        // Reserve ~60s of headroom (16 kHz mono Float32 = ~3.7 MB) so the
+        // accumulator doesn't reallocate on every doubling pass during a
+        // typical push-to-talk session.
+        var samples: [Float] = []
+        samples.reserveCapacity(Int(SampleRateConverter.targetSampleRate) * 60)
         let startedAt = Date()
         do {
             try engineDriver.installTap(
@@ -119,6 +123,10 @@ public final class Recorder {
     }
 
     private func handleBuffer(_ buffer: AVAudioPCMBuffer) {
+        // Must run on main: `AVAudioEngineDriver` dispatches its tap callback
+        // to main, so `state` is only read/written here from a single thread.
+        // Putting `state` behind a queue without auditing this method first
+        // would silently break the COW dance below.
         guard case .recording(var samples, let startedAt) = state else { return }
         // Drop the state's reference to the array storage so `samples` holds
         // the only strong ref; this lets `converter.append` mutate in place

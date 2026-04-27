@@ -19,14 +19,15 @@ internal final class SampleRateConverter {
     /// samples to `accumulator`. Returns the number of frames appended.
     /// Throws `RecorderError.formatConversionFailed` on setup or convert failure.
     func append(_ buffer: AVAudioPCMBuffer, into accumulator: inout [Float]) throws -> AVAudioFrameCount {
-        if converter == nil {
+        let converter: AVAudioConverter
+        if let existing = self.converter {
+            converter = existing
+        } else {
             guard let c = AVAudioConverter(from: buffer.format, to: Self.targetFormat) else {
                 throw RecorderError.formatConversionFailed
             }
+            self.converter = c
             converter = c
-        }
-        guard let converter = converter else {
-            throw RecorderError.formatConversionFailed
         }
 
         // Estimate output capacity: ratio = target / source rate; +256 for safety

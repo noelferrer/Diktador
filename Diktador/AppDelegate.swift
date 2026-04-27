@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var openInputMonitoringSettingsItem: NSMenuItem?
     private var openMicrophoneSettingsItem: NSMenuItem?
     private var lastRecordingItem: NSMenuItem?
-    private var lastRecordingURL: URL?
+    private var statusFlashGeneration: Int = 0
 
     private let hotkeys = HotkeyRegistry()
     private let recorder = Recorder()
@@ -97,10 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             setListening(false)
             NSLog("[app] recorder.start failed: \(error)")
-            statusRowItem?.title = "Recording failed: \(error)"
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-                self?.statusRowItem?.title = Self.idleTitle
-            }
+            flashFailure(error)
         }
     }
 
@@ -114,34 +111,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleRecordingResult(_ result: Result<RecordingResult, Error>) {
         switch result {
         case .success(let recording):
-            lastRecordingURL = recording.fileURL
             let title = String(
                 format: "Last recording: %.1fs — Reveal in Finder",
                 recording.duration
             )
-            if lastRecordingItem == nil {
+            if let item = lastRecordingItem {
+                item.title = title
+                item.representedObject = recording.fileURL
+            } else {
                 let item = NSMenuItem(
                     title: title,
-                    action: #selector(revealLastRecording),
+                    action: #selector(revealLastRecording(_:)),
                     keyEquivalent: ""
                 )
                 item.target = self
+                item.representedObject = recording.fileURL
                 statusItem?.menu?.insertItem(item, at: 1)
                 lastRecordingItem = item
-            } else {
-                lastRecordingItem?.title = title
             }
         case .failure(let error):
             NSLog("[app] recorder.stop failed: \(error)")
-            statusRowItem?.title = "Recording failed: \(error)"
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-                self?.statusRowItem?.title = Self.idleTitle
-            }
+            flashFailure(error)
         }
     }
 
-    @objc private func revealLastRecording() {
-        guard let url = lastRecordingURL else { return }
+    /// Briefly shows an error in the status row, then reverts to the idle title
+    /// after 3 s — but only if no newer status update arrives in the meantime.
+    /// The generation counter cancels stale reverts so a fresh recording started
+    /// inside the 3 s window doesn't get clobbered by an older revert closure.
+    private func flashFailure(_ error: Error) {
+        statusFlashGeneration += 1
+        let generation = statusFlashGeneration
+        statusRowItem?.title = "Recording failed: \(error)"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self = self, self.statusFlashGeneration == generation else { return }
+            self.statusRowItem?.title = Self.idleTitle
+        }
+    }
+
+    @objc private func revealLastRecording(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
