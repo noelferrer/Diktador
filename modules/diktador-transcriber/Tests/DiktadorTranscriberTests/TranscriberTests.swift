@@ -29,4 +29,30 @@ final class TranscriberTests: XCTestCase {
         )
         XCTAssertEqual(TranscriberError.emptyTranscript, .emptyTranscript)
     }
+
+    @MainActor
+    func test_loadModel_happyPath_transitionsToReady() async throws {
+        let driver = StubWhisperKitDriver()
+        let modelStorage = Self.tempModelStorage()
+        let transcriber = WhisperKitTranscriber(
+            driver: driver,
+            modelName: "openai_whisper-base",
+            modelStorage: modelStorage
+        )
+        XCTAssertEqual(transcriber.state, .uninitialized)
+
+        try await transcriber.loadModel()
+
+        XCTAssertEqual(transcriber.state, .ready)
+        XCTAssertEqual(driver.loadModelCalls.count, 1)
+        XCTAssertEqual(driver.loadModelCalls.first?.name, "openai_whisper-base")
+        XCTAssertEqual(driver.loadModelCalls.first?.modelStorage, modelStorage)
+    }
+
+    static func tempModelStorage() -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "diktador-test-models-\(UUID().uuidString)"
+        )
+        return url
+    }
 }
