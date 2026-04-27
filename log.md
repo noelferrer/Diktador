@@ -75,3 +75,20 @@ Append-only chronological record. Every entry begins with `## [YYYY-MM-DD] <op> 
 - Created: .claude/skills/go/SKILL.md — workspace override of the global /go. Adds Phase 0 bootstrap (git init + remote add for https://github.com/noelferrer/Diktador.git), Tauri-specific test matrix (cargo + Vite + computer-use for hotkey/native), and Phase 4 post-ship hygiene (log.md + memory/daily append).
 - Levels 3–6 of memory architect spec NOT enabled (Memsearch, MemPalace, OpenBrain, Mem0). Session-start hook NOT wired up — user already has user-level auto-memory loading.
 - No contradictions surfaced.
+
+## [2026-04-27] document | ADR — Hotkey modifier-only trigger via NSEvent
+- Created: wiki/decisions/hotkey-modifier-only-trigger.md (status: stable)
+- Created: wiki/howtos/first-run-setup.md
+- Updated: wiki/index.md (Decisions 1→2; Howtos 0→1)
+- Decision: bare-modifier triggers (Fn for v1) live on a parallel NSEvent global-monitor path inside HotkeyRegistry. Carbon Events stays for keyed combos. Input Monitoring permission surfaces through a new InputMonitoringStatus enum and registry getters. Right-side modifiers deferred to a separate PR.
+- Open questions filed in the ADR: right-modifier API shape (sided variant of KeyCombo.modifiers vs new enum); conflict detection still v2.
+
+## [2026-04-27] meta | Fn-key trigger shipped — PR #3
+- PR: https://github.com/noelferrer/Diktador/pull/3
+- Modules touched: modules/diktador-hotkey/ (new files: ModifierTrigger, InputMonitoringStatus, PermissionProvider; HotkeyRegistry extended; tests +3); Diktador/ app target (AppDelegate rewired)
+- Plan executed: docs/superpowers/plans/2026-04-27-hotkey-fn-trigger.md (8 phases A–H, all done)
+- Tests run: xcodebuild Debug + Release BUILD SUCCEEDED; swift test 8/8 cases pass; computer-use verification confirmed bare-Fn press flips the menu bar icon between mic and mic.fill, the denied-state path surfaces the warning icon + Open Input Monitoring settings… menu item, and the globe-key sanity path confirmed the Press 🌐 to: Do nothing user setup is required.
+- Simplify changes: 8 findings adopted in commit d58a5e7 — AppDelegate image-factory dedupe (templateSymbol helper) + static var → static let; AppDelegate menu-item caching (statusRowItem + openSettingsItem) with double-insert guard; HotkeyRegistry construct ModifierMonitorEntry once with handles populated; HotkeyRegistry drop "— unchanged from PR #2" + WHAT-only doc comment on internal init; HotkeyRegistry one-line invariant comment naming global-vs-local non-overlap; HotkeyRegistry deinit removes still-registered NSEvent monitors; HotkeyRegistry handleFlagsChanged extracts callback to local var before invoke; tests rename test_modifierTrigger_isHashableAndDistinguishesCases → test_modifierTrigger_isHashable.
+- Naming deviations from plan: none.
+- Notes: AppDelegate push-to-talk swapped from Option+Space to bare Fn. Option+Space dropped from v1 default; settings module will reintroduce user choice.
+- Required user setup documented in wiki/howtos/first-run-setup.md: System Settings → Keyboard → Press 🌐 to: Do nothing.

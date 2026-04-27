@@ -2,7 +2,7 @@
 type: memory-domain
 domain: hotkey
 created: 2026-04-26
-updated: 2026-04-26
+updated: 2026-04-27
 ---
 
 # Hotkey — operational notes
@@ -11,16 +11,19 @@ Public surface and failure modes live in [`modules/diktador-hotkey/README.md`](.
 
 ## v1 configuration
 
-- Combo: `Option+Space` (Whisper Flow's classic push-to-talk default; Cmd+Space is Spotlight, so Option+Space is generally free).
+- Trigger: bare **Fn (🌐)** held. `HotkeyRegistry.register(modifierTrigger: .fn, …)` over an NSEvent global monitor. Requires Input Monitoring permission.
 - Behavior: hold-to-talk. `onPress` starts listening, `onRelease` stops.
 - Registry: instantiated and owned by `AppDelegate`; lives in `modules/diktador-hotkey/`.
-- Combo is hardcoded in `AppDelegate`. The future `settings` module will read from `UserDefaults` and call `unregister` + `register` on change.
+- Trigger is hardcoded in `AppDelegate`. The future `settings` module will read from `UserDefaults` and call `unregister` + `register` on change.
+- Required user setup (one-time): System Settings → Keyboard → **Press 🌐 to: Do nothing** (otherwise macOS fires its own globe-key action on every press). See `wiki/howtos/first-run-setup.md`.
+- Permission state machine in `AppDelegate.bootstrapPushToTalk`: `granted` → register; `undetermined` → call `requestInputMonitoringPermission`, recurse; `denied` → show warning state + "Open Input Monitoring settings…" menu item.
 
 ## Open questions (deferred to follow-up PRs / settings module)
 
-- **Bare Fn-key trigger** (the canonical Mac dictation UX, used by Whisper Flow): not possible through soffes/HotKey since Carbon Events doesn't model Fn as a modifier. Needs a parallel path through `NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged)` plus the Input Monitoring permission. Filed as the next focused PR after this one.
-- **Right-Option-only / sided-modifier support** — same root cause: Carbon doesn't expose sidedness. Same `NSEvent` global-monitor solution as Fn. Decide before promising in UI.
+- ~~**Bare Fn-key trigger**~~ — shipped. NSEvent global monitor + Input Monitoring permission. See `wiki/decisions/hotkey-modifier-only-trigger.md`.
+- **Right-Option-only / sided-modifier support** — Carbon-Events still doesn't expose sidedness. Same NSEvent global-monitor solution as Fn, but a different API surface (lives next to `KeyCombo`, not `ModifierTrigger`, since right-modifiers ARE used as combo modifiers — they're a sided variant of `.option` etc.). Decide before promising in UI.
 - **Conflict detection** — soffes/HotKey fails silently when the combo is already taken. v2 plan is `CGEventSource` introspection at registration; until then, a "test your hotkey" affordance in settings would catch most cases.
+- **`IOHIDAccessType` `default:` blind spot.** `IOHIDPermissionProvider.currentStatus()` switches on `kIOHIDAccessTypeGranted` / `kIOHIDAccessTypeDenied` and routes anything else (today: only `kIOHIDAccessTypeUnknown`) to `.undetermined`. If Apple adds a fourth case (e.g., `.restricted` for MDM-managed Macs), the provider treats it as undetermined → bootstrap calls request → request resolves false → `.denied`. Functionally correct, observability poor. If a future macOS surfaces a new case, add an explicit branch and possibly a `#if DEBUG` log.
 
 ## Debug recipes
 
