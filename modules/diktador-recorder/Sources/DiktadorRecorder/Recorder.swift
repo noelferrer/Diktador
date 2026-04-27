@@ -36,6 +36,11 @@ public final class Recorder {
     }
 
     deinit {
+        // .finalizing is intentionally not handled here: stop() has already
+        // removed the tap and stopped the engine before transitioning to
+        // .finalizing, so the only outstanding work is the off-main WAV write,
+        // which captures `[weak self]` and no-ops cleanly when the recorder
+        // is dropped. Re-tearing-down the engine would double-stop it.
         if case .recording = state {
             engineDriver.removeTap()
             engineDriver.stop()
@@ -127,6 +132,7 @@ public final class Recorder {
         // to main, so `state` is only read/written here from a single thread.
         // Putting `state` behind a queue without auditing this method first
         // would silently break the COW dance below.
+        dispatchPrecondition(condition: .onQueue(.main))
         guard case .recording(var samples, let startedAt) = state else { return }
         // Drop the state's reference to the array storage so `samples` holds
         // the only strong ref; this lets `converter.append` mutate in place
@@ -142,7 +148,9 @@ public final class Recorder {
 
     private func nextFileURL() -> URL {
         let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
+        // Fractional seconds avoid filename collisions on rapid release-press
+        // cycles within the same wall-clock second.
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let stamp = formatter.string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
         return recordingsDirectory.appendingPathComponent("\(stamp).wav")
