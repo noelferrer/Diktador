@@ -1,6 +1,7 @@
 import AppKit
 import DiktadorHotkey
 import DiktadorRecorder
+import DiktadorTranscriber
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let idleTitle = "Diktador (idle)"
@@ -9,6 +10,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let microphoneNeededTitle = "Diktador (needs Microphone)"
     private static let openInputMonitoringSettingsTitle = "Open Input Monitoring settings…"
     private static let openMicrophoneSettingsTitle = "Open Microphone settings…"
+    private static let transcriberLoadingTitle = "Transcription: loading model…"
+    private static let transcriberReadyTitle = "Transcription: ready"
+    private static let transcriberTranscribingTitle = "Transcription: transcribing…"
+    private static let transcriberFailedTitle = "Transcription: model unavailable — see Console"
+    private static let transcriberInferenceFailedTitle = "Transcription failed — see Console"
+    private static let transcriberNoSpeechTitle = "Transcription: no speech detected"
 
     private static let inputMonitoringPaneURL = URL(
         string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
@@ -22,15 +29,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var openInputMonitoringSettingsItem: NSMenuItem?
     private var openMicrophoneSettingsItem: NSMenuItem?
     private var lastRecordingItem: NSMenuItem?
+    private var transcriberStatusItem: NSMenuItem?
+    private var lastTranscriptItem: NSMenuItem?
     private var statusFlashGeneration: Int = 0
+    private var transcriptionGeneration: Int = 0
 
     private let hotkeys = HotkeyRegistry()
     private let recorder = Recorder()
+    @MainActor private lazy var transcriber = WhisperKitTranscriber()
     private var pushToTalkToken: HotkeyRegistry.RegistrationToken?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureStatusItem()
         bootstrapPushToTalk()
+        Task { @MainActor [weak self] in
+            await self?.loadTranscriptionModel()
+        }
+    }
+
+    @MainActor
+    private func loadTranscriptionModel() async {
+        transcriberStatusItem?.title = Self.transcriberLoadingTitle
+        do {
+            try await transcriber.loadModel()
+            transcriberStatusItem?.title = Self.transcriberReadyTitle
+        } catch {
+            transcriberStatusItem?.title = Self.transcriberFailedTitle
+            NSLog("[app] transcriber.loadModel failed: \(error)")
+        }
     }
 
     private func configureStatusItem() {
@@ -40,6 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         let statusRow = NSMenuItem(title: Self.idleTitle, action: nil, keyEquivalent: "")
         menu.addItem(statusRow)
+        menu.addItem(.separator())
+        let transcriberStatus = NSMenuItem(title: Self.transcriberLoadingTitle, action: nil, keyEquivalent: "")
+        menu.addItem(transcriberStatus)
+        self.transcriberStatusItem = transcriberStatus
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(
             title: "Quit",
@@ -129,10 +159,88 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 statusItem?.menu?.insertItem(item, at: 1)
                 lastRecordingItem = item
             }
+            let url = recording.fileURL
+            Task { @MainActor [weak self] in
+                await self?.runTranscription(for: url)
+            }
         case .failure(let error):
             NSLog("[app] recorder.stop failed: \(error)")
             flashFailure(error)
         }
+    }
+
+    @MainActor
+    private func runTranscription(for audioFileURL: URL) async {
+        transcriptionGeneration += 1
+        let generation = transcriptionGeneration
+        transcriberStatusItem?.title = Self.transcriberTranscribingTitle
+        do {
+            let transcript = try await transcriber.transcribe(audioFileURL: audioFileURL)
+            guard generation == transcriptionGeneration else { return }
+            copyTranscriptToPasteboard(transcript)
+            updateLastTranscriptItem(transcript)
+            transcriberStatusItem?.title = Self.transcriberReadyTitle
+        } catch TranscriberError.emptyTranscript {
+            guard generation == transcriptionGeneration else { return }
+            transcriberStatusItem?.title = Self.transcriberNoSpeechTitle
+            NSLog("[app] transcription returned no speech for \(audioFileURL.lastPathComponent)")
+        } catch TranscriberError.modelLoadFailed(let message) {
+            guard generation == transcriptionGeneration else { return }
+            transcriberStatusItem?.title = Self.transcriberFailedTitle
+            NSLog("[app] transcription unavailable: \(message)")
+        } catch {
+            guard generation == transcriptionGeneration else { return }
+            transcriberStatusItem?.title = Self.transcriberInferenceFailedTitle
+            NSLog("[app] transcription failed: \(error)")
+        }
+    }
+
+    @MainActor
+    private func copyTranscriptToPasteboard(_ transcript: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(transcript, forType: .string)
+    }
+
+    @MainActor
+    private func updateLastTranscriptItem(_ transcript: String) {
+        let title = Self.lastTranscriptMenuTitle(for: transcript)
+        if let item = lastTranscriptItem {
+            item.title = title
+            item.representedObject = transcript
+            return
+        }
+        let item = NSMenuItem(
+            title: title,
+            action: #selector(copyLastTranscript(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = transcript
+        // Insert above "Last recording" if present, else above the Quit-area separator.
+        let menu = statusItem?.menu
+        if let recordingItem = lastRecordingItem,
+           let menu, let idx = menu.items.firstIndex(of: recordingItem) {
+            menu.insertItem(item, at: idx)
+        } else if let menu {
+            // Insert just before the final separator+Quit pair.
+            let insertAt = max(menu.items.count - 2, 0)
+            menu.insertItem(item, at: insertAt)
+        }
+        lastTranscriptItem = item
+    }
+
+    @MainActor
+    @objc private func copyLastTranscript(_ sender: NSMenuItem) {
+        guard let transcript = sender.representedObject as? String else { return }
+        copyTranscriptToPasteboard(transcript)
+    }
+
+    private static func lastTranscriptMenuTitle(for transcript: String) -> String {
+        let head = transcript.prefix(61)
+        let single = String(head).replacingOccurrences(of: "\n", with: " ")
+        let trimmed = head.count > 60 ? String(single.prefix(60)) + "…" : single
+        return "Last transcript: \"\(trimmed)\" — Copied"
     }
 
     /// Briefly shows an error in the status row, then reverts to the idle title

@@ -19,6 +19,8 @@ packages:
     path: modules/diktador-hotkey
   DiktadorRecorder:
     path: modules/diktador-recorder
+  DiktadorTranscriber:
+    path: modules/diktador-transcriber
 targets:
   Diktador:
     type: application
@@ -31,6 +33,8 @@ targets:
         product: DiktadorHotkey
       - package: DiktadorRecorder
         product: DiktadorRecorder
+      - package: DiktadorTranscriber
+        product: DiktadorTranscriber
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.noelferrer.Diktador

@@ -28,7 +28,7 @@ The original schema in `AGENTS.md` had inherited a Tauri 2 + TypeScript + Vite s
 **App style**: Menu bar app (`LSUIElement = YES`), no Dock icon. Settings opened from menu bar.
 
 **STT pipeline (dual-backend, user-selectable)**:
-- **WhisperKit** ([argmaxinc/WhisperKit](https://github.com/argmaxinc/WhisperKit)) — open-source Swift package (Argmax, MIT) running Whisper on Apple Silicon via Core ML and the Neural Engine. **Default mode out of the box.**
+- **WhisperKit** ([argmaxinc/argmax-oss-swift](https://github.com/argmaxinc/argmax-oss-swift)) — open-source Swift package (Argmax, MIT) running Whisper on Apple Silicon via Core ML and the Neural Engine. **Default mode out of the box.**
 - Groq HTTPS API (`whisper-large-v3-turbo`) — user pastes free-tier key in settings; key stored in Keychain. Selectable as the primary mode once a key is set.
 
 User picks one primary mode in settings. If the primary fails at runtime (model load error, no network for Groq, etc.), the other is attempted as automatic fallback **only if it is configured** (Groq fallback requires a key on file; local fallback requires a model already downloaded). If no fallback is available, the failure surfaces in the menu bar.
@@ -129,7 +129,7 @@ User picks one primary mode in settings. If the primary fails at runtime (model 
 
 - [[sources/llm-wiki-pattern]] — workspace founding manifesto (informs the wiki documentation around this decision, not the decision itself).
 - typr reference clone: `typr-main/` (read-only). Specifically [`typr-main/src-tauri/src/transcribe_local.rs`](../../typr-main/src-tauri/src/transcribe_local.rs), [`transcribe_groq.rs`](../../typr-main/src-tauri/src/transcribe_groq.rs), [`recorder.rs`](../../typr-main/src-tauri/src/recorder.rs), [`paste.rs`](../../typr-main/src-tauri/src/paste.rs).
-- WhisperKit: https://github.com/argmaxinc/WhisperKit
+- WhisperKit (Argmax OSS Swift): https://github.com/argmaxinc/argmax-oss-swift
 - HotKey (Soffes): https://github.com/soffes/HotKey
 - Groq Speech API: https://console.groq.com/docs/speech-text
 - Whisper Flow (UX reference): https://wisprflow.ai

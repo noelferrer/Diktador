@@ -17,15 +17,17 @@ This wiki documents two things in parallel:
 
 ---
 
-## Decisions (3)
+## Decisions (4)
 
 - [[decisions/framework-choice]] — Swift + SwiftUI + WhisperKit, macOS-only. Replaces prior Tauri assumption. | 2026-04-26
 - [[decisions/hotkey-modifier-only-trigger]] — Bare-modifier triggers (Fn for v1) via NSEvent global monitor; Input Monitoring permission required. | 2026-04-27
 - [[decisions/recorder-capture-pipeline]] — Recorder is pure capture in v1 (no VAD); in-process 16 kHz mono Float32 conversion; WAV-to-disk debug surface. | 2026-04-27
+- [[decisions/transcriber-pipeline]] — WhisperKit-only v1; `openai_whisper-base`; eager-load on launch; clipboard-copy debug surface; Groq + VAD deferred. | 2026-04-27
 
-## Modules (1)
+## Modules (2)
 
 - [[modules/recorder]] — Audio capture + WAV-to-disk debug surface; consumed by the future transcriber. | 2026-04-27
+- [[modules/transcriber]] — WhisperKit transcription of recorder WAVs; clipboard-copy stand-in until output module lands. | 2026-04-27
 
 ## Features (0)
 
@@ -74,8 +76,8 @@ Pages that exist as stubs and want filling, plus pages that probably should exis
 - _Proposed_: page on **fan wikis as exemplars** (Tolkien Gateway, Memory Alpha) — referenced in [[sources/llm-wiki-pattern]].
 - _Proposed_: synthesis page **personal-knowledge-bases** once a second comparable source enters.
 - _Proposed_: entity page on **typr** ([[entities/typr]]) — load-bearing across the workspace (architecture reference, even after the framework swap).
-- _Proposed_: entity page on **WhisperKit** ([[entities/whisperkit]]) — referenced from [[decisions/framework-choice]]; promote to entity when a second page references it.
-- _Proposed_: entity page on **Swift / SwiftUI / AVFoundation / CGEvent** — same rule, create when a second page references each.
+- _Proposed_: entity page on **WhisperKit** ([[entities/whisperkit]]) — second-reference threshold reached (now referenced from [[decisions/framework-choice]], [[decisions/transcriber-pipeline]], [[modules/transcriber]]); create on next entity-pass.
+- _Proposed_: entity pages on **Swift / SwiftUI / CGEvent** — same rule, create when a second page references each. **AVFoundation** has reached the second-reference threshold (referenced from [[decisions/framework-choice]], [[decisions/recorder-capture-pipeline]], [[modules/recorder]]); create on next entity-pass.
 - _Proposed_: entity page on **Groq** — same rule.
 - _Proposed_: concept page on **dictation-latency-budget** — STT dominates total latency; framework overhead is ~10–20% of the budget. Referenced in [[decisions/framework-choice]] alternatives section.
 - _Dropped_: entity page on **Tauri** — was proposed under the prior assumption; no longer load-bearing after the Swift decision.
