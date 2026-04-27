@@ -12,9 +12,19 @@ session_ended: 2026-04-27 PR #6 ready to push (transcriber module — all phases
 
 - **Branch on disk**: `feat/transcriber-module`. **Not yet pushed.** Working tree clean.
 - **PR #6**: ready to open. All implementation, docs, simplify pass, and final whole-branch code review complete.
-- **Most recent commit**: `90002c0 simplify: drop narrating comments; bound title-truncation work`.
+- **Most recent commit**: `825d8b1 transcriber: drop redundant models/ segment from defaultModelStorage`.
 - **Build status**: `xcodebuild` Debug + Release green. `swift test` 15/15 in `modules/diktador-transcriber/`. Recorder 9/9 + hotkey 8/8 unaffected.
-- **Final whole-branch review verdict**: **ship**. Three Minor findings + four Follow-ups, none blocking.
+- **Final whole-branch review verdict**: **ship** (after the two computer-use bug fixes documented below). Three Minor findings + four Follow-ups from the review pass, none blocking.
+- **Computer-use partial verification done**: app launches, WhisperKit downloads `openai_whisper-base` (143 MB) to `~/Library/Application Support/Diktador/models/argmaxinc/whisperkit-coreml/openai_whisper-base/` — the path the docs claim. Hold-Fn-and-speak verification still pending — requires the user (TCC permission grant + microphone).
+
+## Bugs caught during computer-use verification (fixed)
+
+The H3 final whole-branch code review approved "ship", but `/go` Phase H1 surfaced a real integration bug that all four review passes missed because every layer of testing used the stub driver:
+
+1. **`modelStorage` was created on disk but never passed to `WhisperKitConfig`.** WhisperKit silently fell back to its default `~/Documents/huggingface/...` path, polluting the user's Documents folder and contradicting the spec/ADR/README claims about model location. Fixed by adding `downloadBase: modelStorage` to the `WhisperKitConfig` init in `LiveWhisperKitDriver.loadModel`. Commit `9740184`.
+2. **`defaultModelStorage()` returned `<appSupport>/Diktador/models/`**, but WhisperKit's HubApi adds its own `models/<repo>/<variant>/` underneath, producing the awkward `<diktador>/models/models/argmaxinc/...` layout. Fixed by returning `<appSupport>/Diktador/` instead so the final path is the documented `<diktador>/models/argmaxinc/...`. Commit `825d8b1`.
+
+**Lesson learned (worth promoting to a memory note when this session ends)**: stub-driver-based unit tests verify protocol contracts, not library integration. When wrapping a third-party SDK with a behavioral facade, always run computer-use verification before declaring ship-ready. The H3 reviewer noted "Pipeline is held for the app lifetime via `private var pipeline: WhisperKit?`" but didn't check the actual on-disk storage path because that's a runtime-observable behavior, not visible from source review alone.
 
 ## What the app does today (after PR #6 lands)
 
