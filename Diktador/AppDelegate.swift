@@ -31,8 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRecordingItem: NSMenuItem?
     private var transcriberStatusItem: NSMenuItem?
     private var lastTranscriptItem: NSMenuItem?
-    private var lastTranscript: String?
     private var statusFlashGeneration: Int = 0
+    private var transcriptionGeneration: Int = 0
 
     private let hotkeys = HotkeyRegistry()
     private let recorder = Recorder()
@@ -171,20 +171,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func runTranscription(for audioFileURL: URL) async {
+        transcriptionGeneration += 1
+        let generation = transcriptionGeneration
         transcriberStatusItem?.title = Self.transcriberTranscribingTitle
         do {
             let transcript = try await transcriber.transcribe(audioFileURL: audioFileURL)
+            guard generation == transcriptionGeneration else { return }
             copyTranscriptToPasteboard(transcript)
             updateLastTranscriptItem(transcript)
-            lastTranscript = transcript
             transcriberStatusItem?.title = Self.transcriberReadyTitle
         } catch TranscriberError.emptyTranscript {
+            guard generation == transcriptionGeneration else { return }
             transcriberStatusItem?.title = Self.transcriberNoSpeechTitle
             NSLog("[app] transcription returned no speech for \(audioFileURL.lastPathComponent)")
         } catch TranscriberError.modelLoadFailed(let message) {
+            guard generation == transcriptionGeneration else { return }
             transcriberStatusItem?.title = Self.transcriberFailedTitle
             NSLog("[app] transcription unavailable: \(message)")
         } catch {
+            guard generation == transcriptionGeneration else { return }
             transcriberStatusItem?.title = Self.transcriberInferenceFailedTitle
             NSLog("[app] transcription failed: \(error)")
         }
