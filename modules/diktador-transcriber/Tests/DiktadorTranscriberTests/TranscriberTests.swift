@@ -179,6 +179,23 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(transcriber.state, .ready)
     }
 
+    @MainActor
+    func test_transcribe_whileLoading_awaitsTheInFlightLoad() async throws {
+        let driver = StubWhisperKitDriver()
+        driver.loadModelDelay = 50_000_000
+        let transcriber = WhisperKitTranscriber(driver: driver)
+
+        // Kick off loadModel without awaiting; transcribe right away should
+        // join the in-flight task rather than starting a second load.
+        async let load: Void = transcriber.loadModel()
+        let text = try await transcriber.transcribe(audioFileURL: Self.tempAudioFile())
+        try await load
+
+        XCTAssertEqual(text, "stub transcript")
+        XCTAssertEqual(driver.loadModelCalls.count, 1)
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
