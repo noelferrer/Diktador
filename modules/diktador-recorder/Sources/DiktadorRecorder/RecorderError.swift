@@ -1,6 +1,4 @@
-import Foundation
-
-public enum RecorderError: Error, Equatable {
+public enum RecorderError: Error, Equatable, Sendable {
     /// `start()` was called but Microphone permission is not granted.
     case microphonePermissionDenied
     /// `start()` was called while a recording is already in progress.
