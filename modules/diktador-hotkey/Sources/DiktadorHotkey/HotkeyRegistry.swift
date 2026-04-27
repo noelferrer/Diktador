@@ -20,9 +20,16 @@ public final class HotkeyRegistry {
         self.permissionProvider = IOHIDPermissionProvider()
     }
 
-    /// Test-only initializer that swaps in a stub permission provider.
     internal init(permissionProvider: PermissionProvider) {
         self.permissionProvider = permissionProvider
+    }
+
+    deinit {
+        // NSEvent monitor handles aren't ARC-managed; OS-side leaks until removed.
+        for entry in monitorEntries.values {
+            if let global = entry.globalHandle { NSEvent.removeMonitor(global) }
+            if let local = entry.localHandle { NSEvent.removeMonitor(local) }
+        }
     }
 
     public var activeRegistrationCount: Int {
@@ -41,7 +48,7 @@ public final class HotkeyRegistry {
         permissionProvider.requestAccess(completion: completion)
     }
 
-    // MARK: KeyCombo (Carbon path) — unchanged from PR #2
+    // MARK: KeyCombo (Carbon path)
 
     /// Registers a key combo and returns a token used to later unregister it.
     public func register(
@@ -68,37 +75,36 @@ public final class HotkeyRegistry {
         onRelease: @escaping () -> Void
     ) -> RegistrationToken {
         let id = UUID()
-        var entry = ModifierMonitorEntry(
+
+        // The global monitor fires only when another app is frontmost; the local
+        // monitor only when Diktador itself is frontmost. They never overlap, so
+        // the same handler can serve both without a debounce.
+        let globalHandle = NSEvent.addGlobalMonitorForEvents(
+            matching: .flagsChanged,
+            handler: { [weak self] event in
+                self?.handleFlagsChanged(event: event, tokenID: id)
+            }
+        )
+        let localHandle = NSEvent.addLocalMonitorForEvents(
+            matching: .flagsChanged,
+            handler: { [weak self] event in
+                self?.handleFlagsChanged(event: event, tokenID: id)
+                return event
+            }
+        )
+
+        if globalHandle == nil {
+            NSLog("[hotkey] failed to install global monitor for \(modifierTrigger)")
+        }
+
+        monitorEntries[id] = ModifierMonitorEntry(
             trigger: modifierTrigger,
-            globalHandle: nil,
-            localHandle: nil,
+            globalHandle: globalHandle,
+            localHandle: localHandle,
             isPressed: false,
             onPress: onPress,
             onRelease: onRelease
         )
-
-        let globalHandler: (NSEvent) -> Void = { [weak self] event in
-            self?.handleFlagsChanged(event: event, tokenID: id)
-        }
-        let localHandler: (NSEvent) -> NSEvent? = { [weak self] event in
-            self?.handleFlagsChanged(event: event, tokenID: id)
-            return event
-        }
-
-        entry.globalHandle = NSEvent.addGlobalMonitorForEvents(
-            matching: .flagsChanged,
-            handler: globalHandler
-        )
-        entry.localHandle = NSEvent.addLocalMonitorForEvents(
-            matching: .flagsChanged,
-            handler: localHandler
-        )
-
-        if entry.globalHandle == nil {
-            NSLog("[hotkey] failed to install global monitor for \(modifierTrigger)")
-        }
-
-        monitorEntries[id] = entry
         return RegistrationToken(id: id)
     }
 
@@ -108,11 +114,8 @@ public final class HotkeyRegistry {
         guard isPressedNow != entry.isPressed else { return }
         entry.isPressed = isPressedNow
         monitorEntries[tokenID] = entry
-        if isPressedNow {
-            entry.onPress()
-        } else {
-            entry.onRelease()
-        }
+        let callback = isPressedNow ? entry.onPress : entry.onRelease
+        callback()
     }
 
     // MARK: Unregister

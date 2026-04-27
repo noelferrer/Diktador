@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
 
     private var statusItem: NSStatusItem?
+    private var statusRowItem: NSMenuItem?
+    private var openSettingsItem: NSMenuItem?
     private let hotkeys = HotkeyRegistry()
     private var pushToTalkToken: HotkeyRegistry.RegistrationToken?
 
@@ -25,7 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.image = Self.idleImage
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: Self.idleTitle, action: nil, keyEquivalent: ""))
+        let statusRow = NSMenuItem(title: Self.idleTitle, action: nil, keyEquivalent: "")
+        menu.addItem(statusRow)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(
             title: "Quit",
@@ -35,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = menu
 
         self.statusItem = item
+        self.statusRowItem = statusRow
     }
 
     private func bootstrapPushToTalk() {
@@ -64,15 +68,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showPermissionDeniedState() {
         statusItem?.button?.image = Self.warningImage
-        statusItem?.menu?.items.first?.title = Self.permissionNeededTitle
+        statusRowItem?.title = Self.permissionNeededTitle
 
-        let openSettings = NSMenuItem(
+        guard openSettingsItem == nil else { return }
+        let item = NSMenuItem(
             title: Self.openSettingsTitle,
             action: #selector(openInputMonitoringSettings),
             keyEquivalent: ""
         )
-        openSettings.target = self
-        statusItem?.menu?.insertItem(openSettings, at: 1)
+        item.target = self
+        statusItem?.menu?.insertItem(item, at: 1)
+        openSettingsItem = item
     }
 
     @objc private func openInputMonitoringSettings() {
@@ -83,30 +89,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func setListening(_ listening: Bool) {
         statusItem?.button?.image = listening ? Self.listeningImage : Self.idleImage
-        statusItem?.menu?.items.first?.title = listening ? Self.listeningTitle : Self.idleTitle
+        statusRowItem?.title = listening ? Self.listeningTitle : Self.idleTitle
     }
 
-    static var idleImage: NSImage? {
-        let image = NSImage(systemSymbolName: "mic", accessibilityDescription: "Diktador")
+    private static func templateSymbol(_ name: String, description: String) -> NSImage? {
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: description)
         image?.isTemplate = true
         return image
     }
 
-    static var listeningImage: NSImage? {
-        let image = NSImage(
-            systemSymbolName: "mic.fill",
-            accessibilityDescription: "Diktador (listening)"
-        )
-        image?.isTemplate = true
-        return image
-    }
-
-    static var warningImage: NSImage? {
-        let image = NSImage(
-            systemSymbolName: "exclamationmark.triangle",
-            accessibilityDescription: "Diktador (needs Input Monitoring)"
-        )
-        image?.isTemplate = true
-        return image
-    }
+    static let idleImage = templateSymbol("mic", description: "Diktador")
+    static let listeningImage = templateSymbol("mic.fill", description: "Diktador (listening)")
+    static let warningImage = templateSymbol(
+        "exclamationmark.triangle",
+        description: "Diktador (needs Input Monitoring)"
+    )
 }

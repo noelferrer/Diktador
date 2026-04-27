@@ -36,7 +36,7 @@ final class HotkeyRegistryTests: XCTestCase {
         XCTAssertEqual(registry.activeRegistrationCount, 2)
     }
 
-    func test_modifierTrigger_isHashableAndDistinguishesCases() {
+    func test_modifierTrigger_isHashable() {
         let a: ModifierTrigger = .fn
         let b: ModifierTrigger = .fn
         XCTAssertEqual(a, b)
