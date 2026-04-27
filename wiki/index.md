@@ -17,14 +17,15 @@ This wiki documents two things in parallel:
 
 ---
 
-## Decisions (2)
+## Decisions (3)
 
 - [[decisions/framework-choice]] — Swift + SwiftUI + WhisperKit, macOS-only. Replaces prior Tauri assumption. | 2026-04-26
 - [[decisions/hotkey-modifier-only-trigger]] — Bare-modifier triggers (Fn for v1) via NSEvent global monitor; Input Monitoring permission required. | 2026-04-27
+- [[decisions/recorder-capture-pipeline]] — Recorder is pure capture in v1 (no VAD); in-process 16 kHz mono Float32 conversion; WAV-to-disk debug surface. | 2026-04-27
 
-## Modules (0)
+## Modules (1)
 
-_None yet. One page per module under `modules/<name>/`, written when the module is built._
+- [[modules/recorder]] — Audio capture + WAV-to-disk debug surface; consumed by the future transcriber. | 2026-04-27
 
 ## Features (0)
 
