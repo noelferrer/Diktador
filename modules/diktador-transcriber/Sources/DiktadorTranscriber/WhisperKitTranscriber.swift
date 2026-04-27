@@ -75,15 +75,10 @@ public final class WhisperKitTranscriber: Transcriber {
     }
 
     public func transcribe(audioFileURL: URL) async throws -> String {
-        // Validate file exists before paying for state transitions.
         guard FileManager.default.fileExists(atPath: audioFileURL.path) else {
             throw TranscriberError.audioFileUnreadable(audioFileURL)
         }
-
-        // Drive load if needed; surface the same .modelLoadFailed error.
         try await loadModel()
-
-        // Sticky-failure check after loadModel returns.
         if case .failed(let error) = state { throw error }
 
         state = .transcribing

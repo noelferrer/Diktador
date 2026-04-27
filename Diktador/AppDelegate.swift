@@ -237,10 +237,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static func lastTranscriptMenuTitle(for transcript: String) -> String {
-        let single = transcript.replacingOccurrences(of: "\n", with: " ")
-        let trimmed = single.count > 60
-            ? String(single.prefix(60)) + "…"
-            : single
+        let head = transcript.prefix(61)
+        let single = String(head).replacingOccurrences(of: "\n", with: " ")
+        let trimmed = head.count > 60 ? String(single.prefix(60)) + "…" : single
         return "Last transcript: \"\(trimmed)\" — Copied"
     }
 

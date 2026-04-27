@@ -41,10 +41,6 @@ internal final class LiveWhisperKitDriver: WhisperKitDriver, @unchecked Sendable
             throw TranscriberError.transcriptionFailed(message: "pipeline not loaded")
         }
         let results = try await pipeline.transcribe(audioPath: audioFileURL.path)
-        // WhisperKit returns [TranscriptionResult]; concatenate text across results.
-        let combined = results
-            .map { $0.text }
-            .joined(separator: " ")
-        return combined
+        return results.map(\.text).joined(separator: " ")
     }
 }
