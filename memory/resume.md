@@ -1,7 +1,7 @@
 ---
 type: memory-resume
 updated: 2026-04-27
-session_ended: paused mid-Phase-H 2026-04-27 (post-H1, awaiting H2 computer-use verification)
+session_ended: end-of-session 2026-04-27 (PR #3 open awaiting review/merge)
 ---
 
 # Resume point
@@ -10,109 +10,72 @@ session_ended: paused mid-Phase-H 2026-04-27 (post-H1, awaiting H2 computer-use 
 
 ## Active state at end of session
 
-- **Branch on disk**: `feat/hotkey-fn-trigger` (14 commits ahead of `main`, **NOT pushed**, working tree clean).
-- **PR**: not yet opened.
-- **Build status**: `xcodebuild` Debug + Release green; `swift test` 8/8 pass (verified end of session via plan Phase H1).
-- **Plan in flight**: [`docs/superpowers/plans/2026-04-27-hotkey-fn-trigger.md`](../docs/superpowers/plans/2026-04-27-hotkey-fn-trigger.md). Phases A–G + H1 done; H2 (computer-use), H3 (/simplify), H4 (PR), H5 (resume update for the post-ship state), and final code review still pending.
-- **Spec**: [`docs/superpowers/specs/2026-04-27-hotkey-fn-trigger-design.md`](../docs/superpowers/specs/2026-04-27-hotkey-fn-trigger-design.md) — user-approved before plan was written.
+- **Branch on disk**: `feat/hotkey-fn-trigger` (17 commits ahead of `main`, pushed, working tree clean).
+- **PR #3**: https://github.com/noelferrer/Diktador/pull/3 — **OPEN**, awaiting your review/merge.
+- **PR #2** (hotkey module + menu bar shell): merged earlier.
+- **PR #1** (workspace bootstrap + framework ADR): merged earlier.
+- **Build status**: `xcodebuild` Debug + Release green; `swift test` 8/8 pass (post-/simplify rerun).
+- **App location** (Release): `~/Library/Developer/Xcode/DerivedData/Diktador-bgxnmdzjhoodkyaftdnhajichfan/Build/Products/Release/Diktador.app`.
 
-## Pending action from you (do before / during resuming)
+## Pending action from you (do before resuming)
 
-The next live step is **Phase H2 computer-use verification** — user-driven. Two paths to walk through:
+1. **Review and merge PR #3** if the diff looks right: `gh pr merge 3 --squash --delete-branch`, or via the GitHub UI.
+2. (After merge) `git checkout main && git pull origin main` so local `main` is synced before the next branch.
 
-### Granted-state path
-
-```
-open ~/Library/Developer/Xcode/DerivedData/Diktador-*/Build/Products/Release/Diktador.app
-```
-
-On first launch, macOS will show the Input Monitoring consent prompt — click **Allow**. Then verify:
-
-1. Menu bar shows `mic` icon (idle); menu first item reads "Diktador (idle)".
-2. Press **and hold Fn (🌐)** → icon flips to `mic.fill`; menu reads "Diktador (listening…)".
-3. Release Fn → icon and menu flip back.
-
-### Denied-state path
-
-Quit Diktador. **System Settings → Privacy & Security → Input Monitoring** → toggle Diktador OFF. Relaunch.
-
-1. Menu bar shows `exclamationmark.triangle` icon.
-2. Menu first item reads "Diktador (needs Input Monitoring)".
-3. Menu has an "Open Input Monitoring settings…" item that deep-links to the right pane.
-
-Toggle Input Monitoring back ON, quit + relaunch, confirm granted-state behavior returns.
-
-### Globe-key sanity check
-
-While in granted state with **System Settings → Keyboard → Press 🌐 to** set to anything other than "Do nothing", confirm the disclaimer in [`wiki/howtos/first-run-setup.md`](../wiki/howtos/first-run-setup.md): pressing Fn fires both Diktador's listening flip *and* the macOS globe-key action. Set "Press 🌐 to: Do nothing" and confirm only Diktador responds.
-
-Report results to the next session — green / partial / fail. If all three paths pass, proceed straight to H3 (/simplify) → H4 (PR) → H5 (resume update for the shipped state).
+`feat/*` → `main` merges via `gh pr merge` or the UI go through normal review and don't trip the workspace push-to-main hook.
 
 ## What got built this session (skim)
 
-Subagent-driven execution of the eight-phase plan. Per phase: implementer → spec-compliance reviewer → code-quality reviewer → mark complete.
+Two-session arc. Started with the spec + plan committed end of yesterday, paused mid-Phase-H, resumed and finished today.
 
-- **Phase B** (commit `a7f7751`) — `ModifierTrigger.swift` (public enum, `.fn` only, internal `flag` mapping to `NSEvent.ModifierFlags.function`). One new XCTest case.
-- **Phase C** (`a646db2`) — `InputMonitoringStatus.swift` (public enum: granted / denied / undetermined) + `PermissionProvider.swift` (internal protocol + `IOHIDPermissionProvider` real impl wrapping `IOHIDCheckAccess` / `IOHIDRequestAccess`).
-- **Phase D** (`82068a6`) — `HotkeyRegistry` extended: dual storage maps (`carbonEntries` / `monitorEntries`), public + internal initializers, permission accessors. Two new XCTest cases (TDD).
-- **Phase E** (`e19d7a1`) — `register(modifierTrigger:onPress:onRelease:)` over `NSEvent.addGlobalMonitorForEvents` + paired local monitor; private `handleFlagsChanged` with edge detection (`isPressed` tracking); `[weak self]` capture in both handlers; nil-global-handle path logs `[hotkey]` prefix and preserves the unregister contract. Two new XCTest cases. Also restored doc comments on `register(combo:)` and `unregister(_:)` that were dropped during Phase D's verbatim file replacement.
-- **Phase F** (`446dda2`) — `Diktador/AppDelegate.swift` rewired: 3-state `bootstrapPushToTalk` machine (`granted` → register Fn; `undetermined` → request + recurse; `denied` → warning UI + deep-link to System Settings). Option+Space dropped from v1 default.
-- **Phase G** (six commits `83c24ab` through `e0475e8`, plus review fixup `5da1218`) — README API/dependencies/failure-modes; memory domain note (Fn open-question closed, `IOHIDAccessType default:` blind spot noted); ADR `wiki/decisions/hotkey-modifier-only-trigger.md`; howto `wiki/howtos/first-run-setup.md`; wiki/index updates; log.md entries (with `<fill in URL after gh pr create>` and `<fill in after /simplify pass>` placeholders that get patched in H4). Review fixups: README `requestInputMonitoringPermission` clarified as non-blocking; "Input Monitoring denied" failure mode notes that the local monitor still fires when Diktador is frontmost; ADR Decision section now documents the global+local monitor pairing.
-- **Phase H1** done — `swift test` 8/8 pass; `xcodebuild` Debug + Release `BUILD SUCCEEDED`.
+- **PR #3 (open)** — bare Fn (🌐) push-to-talk replaces Option+Space. `HotkeyRegistry` extended with a parallel NSEvent global-monitor + paired local-monitor path for `ModifierTrigger.fn` (Carbon-Events doesn't see Fn). New public types `ModifierTrigger`, `InputMonitoringStatus`. New permission API on the registry (`inputMonitoringPermission`, `requestInputMonitoringPermission(completion:)`) backed by an internal `PermissionProvider` seam wrapping `IOHIDCheckAccess` / `IOHIDRequestAccess`. `AppDelegate` rewired to a 3-state bootstrap (granted → register Fn; undetermined → request + recurse; denied → warning UI + deep-link to System Settings → Privacy & Security → Input Monitoring). 8/8 XCTest cases pass; xcodebuild Debug + Release green; computer-use verified the granted/denied/globe-key paths. /simplify pass landed 8 findings (image-factory dedupe, menu-item caching with double-insert guard, struct-construct cleanup, deinit cleanup, comment trims, test rename) — see today's daily for the full list.
+- **Subagent-driven cadence** (yesterday's session): six implementer dispatches across phases B–G, each followed by spec-compliance + code-quality reviewers. Zero BLOCKED / NEEDS_CONTEXT escalations.
+- **/simplify** (today's session): three review agents in parallel (reuse / quality / efficiency); convergent findings adopted, divergent ones skipped with explicit reasoning.
 
 Full retrospective lives in [`daily/2026-04-27.md`](daily/2026-04-27.md).
 
-## What to do next session
+## What to do next session — pick one
 
-### Step 1 — Phase H2 computer-use verification (user-driven; see above)
+### Option A — Right-side modifiers PR ⭐ recommended next
 
-If all three paths pass, continue to Step 2.
+Same NSEvent global-monitor infrastructure that landed in PR #3 unblocks Right-Option-only / Right-Command-only / etc. — but the API surface is different: these are *sided variants* of `KeyCombo.modifiers`, not new `ModifierTrigger` cases. Likely shape: `KeyCombo` gains a `sidedness:` parameter (or a parallel `SidedKeyCombo` type), the registry routes sided combos through the NSEvent path. Requires its own brainstorm — the API decision (extend `KeyCombo` vs. new value type) is real and affects the future settings-module schema. Effort: ~60–90 min including ADR, plan, TDD, /simplify, PR. Probably warrants its own ADR.
 
-### Step 2 — Phase H3 /simplify pass
+Open question filed in [`domains/hotkey.md`](domains/hotkey.md): right-modifier API shape.
 
-Run the workspace `/simplify` skill on the diff in this branch. Adopt findings that clearly improve the code; reject ones that strip useful comments or invent abstractions. If any changes land, re-run `swift test` and `xcodebuild` Debug; commit any /simplify changes; record the bullet-list summary for the H4 log patch.
+### Option B — Recorder module ⭐ unblocks the actual app
 
-### Step 3 — Phase H4 open the PR
+`AVAudioEngine` capture + VAD (voice activity detection). The hotkey module already provides the `setListening(true/false)` semantic via the v1 push-to-talk; `recorder` consumes it to start/stop buffering. First piece of the actual audio pipeline — required before the user can experience real dictation. Module README convention per `AGENTS.md`. Mic permission (`NSMicrophoneUsageDescription` is already declared in `project.yml`) prompts on first capture.
 
-```
-git push -u origin feat/hotkey-fn-trigger
-gh pr create --title "Hotkey Fn-key trigger + Input Monitoring permission flow" --body "<see plan task H4 step 2 for the body template>"
-```
+### Option C — Three modules together (recorder + transcriber + output)
 
-Then patch the two `<fill in…>` placeholders in `log.md` (PR URL + /simplify summary), commit, push.
+Bigger PR; delivers the "talk → see typed text" UX in one shot. Riskier; not recommended without each piece's own brainstorm + spec.
 
-### Step 4 — Phase H5 update memory/resume.md again
-
-Rewrite this file for the *shipped* state (PR open, awaiting review), the same way the previous session's resume.md captured PR #2's open-awaiting-review state.
-
-### Step 5 — Final code review across the whole branch
-
-Per the subagent-driven-development skill's terminal step. Single dispatch covering all 14 commits.
+The user expected dictation-typing-text behavior at the end of PR #2 and was reminded that the transcription pipeline doesn't exist yet. **Options B + C deliver that experience.** Option A delivers a smaller polish on the trigger surface.
 
 ## Key files to load on resume (in order)
 
 1. **This file** — `memory/resume.md`
-2. `wiki/index.md` — workspace catalog (now includes the new ADR + howto)
-3. `memory/general.md` — operational facts
-4. Last ~10 entries of `log.md` — recent activity (note: the most recent two entries are intentionally placeholder-bearing for the still-pending PR)
-5. The plan: `docs/superpowers/plans/2026-04-27-hotkey-fn-trigger.md` — Phase H section is the road map for the rest of this PR
-6. `memory/domains/hotkey.md` — current hotkey-domain state (post Fn-trigger landing)
+2. `wiki/index.md` — workspace catalog (now: 2 decisions, 1 howto)
+3. `memory/general.md` — operational facts (env, conventions, current open questions)
+4. Last ~10 entries of `log.md` — recent activity
+5. If picking Option A: `memory/domains/hotkey.md` Open questions section + `wiki/decisions/hotkey-modifier-only-trigger.md` for the ratified dual-path architecture (the right-modifier ADR will reference it)
+6. If picking Option B: re-read `wiki/decisions/framework-choice.md` for the agreed STT pipeline shape (WhisperKit + optional Groq); check `Diktador/AppDelegate.swift` for where the `setListening(true/false)` callback lives so the recorder can subscribe
 
 `AGENTS.md` (the schema) and the framework ADR auto-load via the project `CLAUDE.md` symlink.
 
 ## Sharp edges to remember
 
-- **No pushing to `main` directly** — workspace hook blocks it. PRs merge through `gh pr merge` once review is done.
-- **The branch is unpushed.** `git push -u origin feat/hotkey-fn-trigger` is the first remote operation in Phase H4.
-- **`log.md` has two intentional placeholders** that MUST be patched in H4 step 3 before final push:
-  - `<fill in URL after gh pr create>` (line ~87 — PR URL)
-  - `<fill in after /simplify pass>` (line ~91 — bulleted findings or "no actionable findings")
-- **Fn-key OS interaction.** macOS's `Press 🌐 to` setting must be "Do nothing" or every press fires both Diktador AND Apple's globe-key action — this is a real user-facing constraint, documented in `wiki/howtos/first-run-setup.md`. If H2 verification finds the app misbehaving, the very first thing to check is that setting on the test machine.
-- **Input Monitoring is a TCC permission, not a sandbox entitlement.** No `.entitlements` file changes. The app already runs unsandboxed; the consent prompt is presented by `IOHIDRequestAccess`.
+- **No pushing to `main` directly** — workspace hook blocks it. Bootstrap exception was one-time. PRs merge through `gh pr merge`.
 - **macOS only shows the Input Monitoring consent prompt once per app-bundle/user pair.** If you've already clicked Allow or Deny on a prior build, the granted/denied state is cached and `IOHIDRequestAccess` returns immediately. To re-test the undetermined-state path, either change the bundle ID or reset privacy via `tccutil reset ListenEvent com.noelferrer.Diktador`.
+- **macOS `Press 🌐 to` setting must be "Do nothing"** for bare-Fn push-to-talk to work without firing Apple's globe action. Documented in `wiki/howtos/first-run-setup.md`.
+- **NSEvent monitor handles aren't ARC-managed.** The `unregister` path and the new `deinit` both call `NSEvent.removeMonitor`. If a future caller drops the registry without unregistering first, `deinit` is the safety net.
+- **SwiftPM identity collision** — local-package directory name lowercased = identity. If it matches a transitive dep's URL identity, `swift package resolve` silently fails. Fix: rename the consuming directory. (See `modules/diktador-hotkey/README.md` for the full case.)
+- **APFS case-insensitivity** — `Hotkey.swiftmodule` vs `HotKey.swiftmodule` collapse to the same file, overwriting our build output. Same family of fix.
+- **`HotKey.Key` qualifier ambiguity** — `HotKey` exports both a class and an enum at module scope, so the qualifier is ambiguous. Workaround already in `KeyCombo.swift`: `@_exported import enum HotKey.Key`.
+- **Xcode is required for any Swift app build** — Command Line Tools alone don't have `xcodebuild`. Currently installed: Xcode 26.4.1 (licensed).
+- **Workspace `/go` skill** at `.claude/skills/go/SKILL.md` is the ship cycle. Used for PR #3 (Phase H2–H4 in the plan map onto /go's Phases 1–3); the post-ship `log.md` + `memory/daily/` updates land as Phase 4 hygiene.
+- **`/simplify` 3-agent convergence pattern**: when reuse + efficiency or quality + efficiency flag the same finding, that's high signal and worth fixing. Single-agent flags are usually defensible-as-is.
 - **`pushToTalkToken`** in `AppDelegate` is held for hygiene but never read in v1. The settings module will read + unregister + re-register when the user changes the trigger.
-- **Workspace `/go` skill** at `.claude/skills/go/SKILL.md` could be used to wrap H2–H4 into one step. The plan's Phase H is structurally the same — choose whichever is clearer.
-- **Subagent-driven cadence so far**: implementer (sonnet) → spec reviewer (haiku) → code quality reviewer (superpowers:code-reviewer, opus). Worked well; no BLOCKED or NEEDS_CONTEXT escalations across all six implementer dispatches.
 
 ## Auto-memory note
 
