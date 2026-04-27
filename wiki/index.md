@@ -17,15 +17,17 @@ This wiki documents two things in parallel:
 
 ---
 
-## Decisions (3)
+## Decisions (4)
 
 - [[decisions/framework-choice]] — Swift + SwiftUI + WhisperKit, macOS-only. Replaces prior Tauri assumption. | 2026-04-26
 - [[decisions/hotkey-modifier-only-trigger]] — Bare-modifier triggers (Fn for v1) via NSEvent global monitor; Input Monitoring permission required. | 2026-04-27
 - [[decisions/recorder-capture-pipeline]] — Recorder is pure capture in v1 (no VAD); in-process 16 kHz mono Float32 conversion; WAV-to-disk debug surface. | 2026-04-27
+- [[decisions/transcriber-pipeline]] — WhisperKit-only v1; `openai_whisper-base`; eager-load on launch; clipboard-copy debug surface; Groq + VAD deferred. | 2026-04-27
 
-## Modules (1)
+## Modules (2)
 
 - [[modules/recorder]] — Audio capture + WAV-to-disk debug surface; consumed by the future transcriber. | 2026-04-27
+- [[modules/transcriber]] — WhisperKit transcription of recorder WAVs; clipboard-copy stand-in until output module lands. | 2026-04-27
 
 ## Features (0)
 
