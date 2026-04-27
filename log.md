@@ -92,3 +92,20 @@ Append-only chronological record. Every entry begins with `## [YYYY-MM-DD] <op> 
 - Naming deviations from plan: none.
 - Notes: AppDelegate push-to-talk swapped from Option+Space to bare Fn. Option+Space dropped from v1 default; settings module will reintroduce user choice.
 - Required user setup documented in wiki/howtos/first-run-setup.md: System Settings → Keyboard → Press 🌐 to: Do nothing.
+
+## [2026-04-27] document | ADR — Recorder capture pipeline + module page
+- Created: wiki/decisions/recorder-capture-pipeline.md (status: stable)
+- Created: wiki/modules/recorder.md
+- Created: memory/domains/recorder.md
+- Updated: wiki/index.md (Decisions 2→3; Modules 0→1)
+- Decision: v1 recorder is pure capture (no VAD); in-process AVAudioConverter to 16 kHz mono Float32; WAV-to-disk at ~/Library/Application Support/Diktador/recordings/. Test seam = MicrophonePermissionProvider + AudioEngineDriver protocols. AppDelegate chains Microphone permission after Input Monitoring. AVAudioEngineDriver hops tap to main to honor the recorder's documented main-thread contract.
+- Open questions filed in the ADR + memory note: VAD integration (transcriber-PR concern); streaming chunks (transcriber-PR concern); multi-input device selection (settings-module concern); retention policy (settings-module concern); SampleRateConverter test seam (deferred unless needed).
+
+## [2026-04-27] meta | Recorder module shipped — PR #4
+- PR: <fill in URL after gh pr create>
+- Modules touched: modules/diktador-recorder/ (new package: Recorder, RecordingResult, MicrophonePermissionStatus, RecorderError, MicrophonePermissionProvider, AudioEngineDriver, SampleRateConverter, WAVWriter; tests +9); Diktador/ app target (AppDelegate dual-permission bootstrap + recording on Fn press/release + Last Recording menu item); project.yml + Diktador.xcodeproj/ (new package dep).
+- Plan executed: docs/superpowers/plans/2026-04-27-recorder-module.md (9 phases A–I, all done)
+- Tests run: xcodebuild Debug + Release BUILD SUCCEEDED; swift test 9/9 cases pass; computer-use verification confirmed bare-Fn hold records audio, "Last recording: X.Xs — Reveal in Finder" appears in the menu, and QuickLook playback of the WAV plays the user's voice.
+- Simplify changes: <fill in after /simplify pass>
+- Notes: VAD deferred to transcriber PR. AppDelegate now requests Microphone permission on first launch after Input Monitoring resolves to .granted. Tap callback hopped to main to make the recorder's main-thread-only contract real.
+- Required user setup unchanged: System Settings → Keyboard → Press 🌐 to: Do nothing (from PR #3); plus Allow on the new Microphone consent prompt.
