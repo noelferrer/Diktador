@@ -112,3 +112,30 @@ Append-only chronological record. Every entry begins with `## [YYYY-MM-DD] <op> 
 - Notes: VAD deferred to transcriber PR. AppDelegate now requests Microphone permission on first launch after Input Monitoring resolves to .granted. Tap callback hopped to main to make the recorder's main-thread-only contract real.
 - Required user setup unchanged: System Settings → Keyboard → Press 🌐 to: Do nothing (from PR #3); plus Allow on the new Microphone consent prompt.
 - Dev-time gotcha: rebuilding an ad-hoc-signed app changes the codesign hash, which invalidates TCC grants. Toggle Diktador OFF/ON in System Settings → Input Monitoring (and Microphone) after each rebuild during development. `tccutil reset Microphone com.noelferrer.Diktador` purges the entry entirely if needed.
+
+## [2026-04-27] document | Transcriber module — WhisperKit + clipboard-copy debug surface
+
+Files created:
+- modules/diktador-transcriber/ (Package.swift, Sources/DiktadorTranscriber/{Transcriber,WhisperKitDriver,WhisperKitTranscriber}.swift, Tests/DiktadorTranscriberTests/{StubWhisperKitDriver,TranscriberTests}.swift, README.md)
+- wiki/decisions/transcriber-pipeline.md
+- wiki/modules/transcriber.md
+- memory/domains/transcriber.md
+
+Files updated:
+- docs/superpowers/specs/2026-04-27-transcriber-module-design.md — minor adjustments (menu order matches shipped layout)
+- docs/superpowers/plans/2026-04-27-transcriber-module.md — minor adjustments (nonisolated defaultModelStorage for Swift 6 strict concurrency)
+- project.yml — DiktadorTranscriber package + product dep on Diktador target
+- Diktador.xcodeproj/project.pbxproj — regenerated from project.yml
+- Diktador/AppDelegate.swift — transcriber owned (lazy @MainActor), loadModel on launch, runTranscription on recorder.stop, clipboard-copy + menu surfaces, transcriptionGeneration counter for stale-completion drop
+- memory/resume.md — mid-PR-#6 handoff state
+- wiki/index.md — Decisions 3->4, Modules 1->2
+
+Notes:
+- WhisperKit pulled via argmaxinc/argmax-oss-swift from 0.9.0 (umbrella package; product `WhisperKit`). Package.resolved currently at 0.18.0.
+- Hard-coded model `openai_whisper-base` (~140 MB). Settings-module picker deferred.
+- `WhisperKitConfig(prewarm: true)` accepted; doubles first-run latency (~30–60 s) but bounds peak memory on 8 GB Apple Silicon.
+- Eager load on launch; menu status line + "Last transcript" item with click-to-recopy.
+- Swift 6 strict-concurrency adaptations at the AppDelegate boundary: `@MainActor lazy var transcriber`; `@MainActor @objc` selectors for menu actions calling `@MainActor` helpers.
+- Concurrent `loadModel` failure-coalescing fix landed mid-implementation: state mutations + error mapping moved into the in-flight Task body so waiter B sees `.modelLoadFailed` consistently. Codified by `test_loadModel_concurrentFailures_bothCallersGetModelLoadFailed`.
+- Stale transcription completions are dropped via a `transcriptionGeneration` counter so a slow previous transcription cannot clobber a fresh one on rapid press-release cycles.
+- Groq backend + VAD deferred to follow-up PRs (framework ADR + recorder ADR open questions persist).
