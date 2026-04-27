@@ -1,7 +1,7 @@
 ---
 type: memory-resume
 updated: 2026-04-27
-session_ended: end-of-session 2026-04-27 (PR #4 merged; ready for next feature)
+session_ended: 2026-04-27 mid-PR-#6 (transcriber module — Phases A–F implemented; F reviewers + G + H pending)
 ---
 
 # Resume point
@@ -10,81 +10,111 @@ session_ended: end-of-session 2026-04-27 (PR #4 merged; ready for next feature)
 
 ## Active state at end of session
 
-- **Branch on disk**: `main`, clean, synced with `origin/main` at commit `b5c67ac`.
-- **PR #4** (recorder module): **MERGED** — `b5c67ac` Recorder module — mic capture + WAV-to-disk debug surface (#4).
-- **PRs #1–#3**: merged earlier (workspace bootstrap, hotkey module + menu bar shell, Fn-key trigger + Input Monitoring permission flow).
-- **Build status**: `xcodebuild` Debug + Release green; `swift test` 9/9 (recorder) + 8/8 (hotkey) pass.
-- **App location** (Release): `~/Library/Developer/Xcode/DerivedData/Diktador-bgxnmdzjhoodkyaftdnhajichfan/Build/Products/Release/Diktador.app`.
-- **Debug artifact still on disk**: `/Applications/DiktadorDev.app` (a copy with bundle ID `com.noelferrer.DiktadorDev` from this session's TCC-debugging). Safe to delete — it's not part of the canonical install. `rm -rf /Applications/DiktadorDev.app` if you want it gone.
+- **Branch on disk**: `feat/transcriber-module`. **Not pushed.** Working tree clean.
+- **PR #6 not yet opened.** All 14 transcriber implementation commits + 4 wiring/fix commits are local-only.
+- **Most recent commit on the branch**: `3e7a3df app: run transcription on each recorder.stop success`.
+- **Build status**: `xcodebuild` Debug + Release green; `swift test` 15/15 in `modules/diktador-transcriber/`. Recorder + hotkey suites unaffected.
+- **Plan**: `docs/superpowers/plans/2026-04-27-transcriber-module.md` (committed `9086985`, then patched `dcad58f` for Swift 6 `nonisolated` requirement).
+- **Spec**: `docs/superpowers/specs/2026-04-27-transcriber-module-design.md` (committed `c2ab3c7`).
+
+## Where the implementation stands (subagent-driven cadence)
+
+| Phase | Tasks | Status |
+|---|---|---|
+| A | Pre-flight | ✅ done (verification only, no commit) |
+| B | Module scaffold (`Package.swift` + WhisperKit dep) | ✅ implementer + spec ✅ + quality ✅ (one Important fix folded in: I2 concurrent-failure coalescing — committed `4ef39fc`) |
+| C | Public types (`Transcriber` protocol, `TranscriberState`, `TranscriberError`) | ✅ same review pass as B |
+| D | State machine TDD (12 commits, 14 tests) | ✅ same review pass; deferred from B-D quality review: **I1 module README is Phase G's job**, not unfinished. |
+| E | `LiveWhisperKitDriver` + `project.yml` wiring | ✅ implementer + spec ✅ + quality ✅. Quality review noted **M2** to roll into Phase G docs: `prewarm: true` doubles first-run model load time per WhisperKit's docs; capture as a design decision in `wiki/decisions/transcriber-pipeline.md` and/or `wiki/modules/transcriber.md`. |
+| F | AppDelegate integration | ⚠️ **implementer DONE_WITH_CONCERNS — reviewers NOT YET RUN.** Two strict-concurrency adaptations the implementer made on their own (see "Concerns to verify" below). Two commits: `4ccf89e` (load on launch), `3e7a3df` (auto-transcribe on stop). |
+| G | Docs (README + ADR + wiki module + memory domain + index + log) | ⏸ pending |
+| H | Ship cycle (`/go`: computer-use, `/simplify`, code-reviewer, resume.md, push, PR) | ⏸ pending |
 
 ## Pending action from you
 
-None — clean handoff.
+None blocking. The natural resume is: dispatch Phase F spec + quality reviewers (in parallel), address any flagged issues, then continue Phase G → H.
 
-## What the app does today
+## What the app does today (post Phase F implementer)
 
-1. Press and hold **Fn** → menu bar icon flips from `mic` (idle) to `mic.fill` (listening), `AVAudioEngine` starts capturing 48 kHz mic input.
-2. Each tap buffer is converted in-process to 16 kHz mono `Float32` and accumulated.
-3. Release Fn → engine stops, the accumulator is written off-main as a 16-bit PCM WAV at `~/Library/Application Support/Diktador/recordings/<ISO-timestamp>.wav`.
-4. A "Last recording: X.Xs — Reveal in Finder" menu item appears (or updates in place); clicking it opens Finder selecting the file. QuickLook plays back the captured voice.
-5. Permissions: bootstrap chains Input Monitoring → Microphone, both with deep-link warning UI on denial. Required entitlement: `com.apple.security.device.audio-input` in `Diktador/Diktador.entitlements`.
+1. **App launch** → menu bar icon shows `mic` (idle); status row says `Diktador (idle)` once Input Monitoring + Mic permissions are granted; transcription status row shows `Transcription: loading model…` while WhisperKit fetches `openai_whisper-base` (~140 MB on first run, cached at `~/Library/Application Support/Diktador/models/`).
+2. **Once cached**, status flips to `Transcription: ready` in 1–2 s on subsequent launches.
+3. **Hold Fn** → menu icon flips to `mic.fill`, recorder captures (unchanged from PR #4).
+4. **Release Fn** → recorder writes the WAV (unchanged), then AppDelegate fires a Task that calls `transcriber.transcribe(audioFileURL:)`. Status flashes `Transcription: transcribing…`, then back to `ready`. The transcript is copied to `NSPasteboard.general`; a `Last transcript: "<60 chars>…" — Copied` menu item appears (or updates in place). Click re-copies.
+5. **Empty hold (silence)** → status shows `Transcription: no speech detected`, clipboard untouched (preserves prior good transcript).
+6. **`Cmd+V` in any app** → pastes the latest transcript.
 
-What the app **does not yet do**: transcribe the audio or inject text at the cursor. Those are the next two PRs.
+What the app **does not yet do**: inject text at the cursor (output module). Clipboard-copy is the v1 stand-in.
 
-## What to do next session — pick one
+## Concerns to verify in Phase F reviewers
 
-### Option A — Transcriber module ⭐ recommended next
+The Phase F implementer flagged two mechanical Swift 6 strict-concurrency deviations from the literal plan code:
 
-Reads the WAV files the recorder produces, runs them through **WhisperKit** (default — local, Apple Silicon Core ML / Neural Engine) or **Groq** (user-selectable cloud fallback, free tier), produces a `String` transcript. The hotkey + recorder modules now provide everything needed: hotkey says "start/stop", recorder produces a 16 kHz mono PCM WAV at the WhisperKit-ready format. Adding the transcriber gets us *most* of the way to dictation — only the output module (text injection at cursor) would remain. Effort: ~90–120 min including ADR (model selection — `tiny` / `base` / `small`), download bootstrap (first-run model fetch), spec, plan, TDD, /simplify, PR.
+1. **`@MainActor lazy var transcriber = WhisperKitTranscriber()`** instead of plain `private let transcriber = WhisperKitTranscriber()`. `WhisperKitTranscriber` is `@MainActor`-isolated, so its initializer can't run from `AppDelegate`'s non-isolated stored-property init context. `lazy` defers construction to first access (from `loadTranscriptionModel()`, which is on the main actor). Same lifecycle, same single instance.
+2. **`@MainActor @objc private func copyLastTranscript(_:)`** instead of plain `@objc`. Needed to call `copyTranscriptToPasteboard` (which is `@MainActor` per the plan). `NSMenuItem` actions run on main anyway, so `@MainActor @objc` is honest about the isolation.
 
-Open question filed in `memory/domains/recorder.md`: VAD integration (continuous-listening; not push-to-talk).
+Neither is a behavior change — both follow inevitably from `WhisperKitTranscriber` being `@MainActor` under Swift 6.3.1. Spec/quality reviewers should validate that these adaptations are correct and acceptable.
 
-### Option B — Output module
+## What to do next session — pick one, in order
 
-Text injection at cursor — Accessibility-permission flow + clipboard-paste primary + CGEvent fallback. Pairs with the recorder via the (not-yet-existing) transcriber: recorder → transcriber → output → text appears at the cursor. Without the transcriber, output has no consumer; ship transcriber first.
+### 1 ⭐ Phase F reviewers (5–10 min)
 
-### Option C — Bundle: transcriber + output
+Dispatch in parallel:
+- **Spec reviewer**: confirm Phase F matches the plan + spec. Range: base `209ba3d`, head `3e7a3df`. Verify the menu order, the auto-transcribe wiring, the clipboard write, and the empty-transcript handling. Validate the two strict-concurrency adaptations as acceptable.
+- **Quality reviewer** (`superpowers:code-reviewer` agent): review the AppDelegate edits. Look for: (a) menu-mutation race conditions if a transcription completes after the user has clicked away, (b) the `Task { @MainActor [weak self] in }` capture pattern is consistent across the new methods, (c) error handling order in `runTranscription` (the `catch TranscriberError.modelLoadFailed(...)` runs before the catch-all — make sure that's the right precedence), (d) `lastTranscriptMenuTitle` truncation logic for multi-byte / emoji transcripts (the prefix is by Character count via `String.prefix(60)`; should be safe but worth a sanity-check).
 
-Bigger PR, delivers the full "talk → see typed text" UX in one shot. Riskier; recommended only after each piece's own brainstorm + spec.
+If issues are flagged, dispatch a fix subagent before proceeding to Phase G.
 
-**Recommendation: Option A.** It's the largest single user-visible step from "icon flips and a debug WAV is saved" toward "speech is transcribed and visible". Output then completes the loop.
+### 2. Phase G — docs (~30 min)
+
+Six tasks per the plan: G1 (`modules/diktador-transcriber/README.md`), G2 (`wiki/decisions/transcriber-pipeline.md` ADR), G3 (`wiki/modules/transcriber.md`), G4 (`memory/domains/transcriber.md`), G5 (`wiki/index.md` updates: Decisions 3→4, Modules 1→2), G6 (`log.md` document entry).
+
+**Roll the E review's M2 finding into G2 + G3**: capture `prewarm: true` doubling first-run model load time as a design decision. Argument: trade longer initial wait for lower peak memory on 8 GB Apple Silicon. Revisit if base model load on M1 8GB exceeds ~60 s.
+
+Also incorporate the F implementer's strict-concurrency notes into the README's "Known failure modes" or "Sharp edges" section so future module-level work doesn't re-derive them.
+
+### 3. Phase H — ship (~30 min, but Phase H1 needs you)
+
+- **H1** (computer-use): I cannot run the menu bar app and hold Fn. After Phase G commits, you'll need to launch Release Diktador, watch the status flow through `loading model… → ready`, hold Fn + speak + release, verify clipboard/menu update, test the cached-relaunch path, test the empty-hold path, and click "Last transcript" to confirm re-copy. The recipe is in the plan (Phase H, Task H1).
+- **H2** `/simplify` 3-agent pass on `modules/diktador-transcriber/` + `Diktador/AppDelegate.swift`. Apply convergence-pattern fixes (≥2 agents flag the same finding).
+- **H3** Final whole-branch code review via `superpowers:code-reviewer` agent.
+- **H4** Rewrite `memory/resume.md` for the post-PR-#6 handoff (output module is the natural next pick).
+- **H5** `git push -u origin feat/transcriber-module && gh pr create` with the body from the plan's Task H5.
+- **H6** Post-merge: `git checkout main && git pull && git branch -d feat/transcriber-module`.
 
 ## Key files to load on resume (in order)
 
 1. **This file** — `memory/resume.md`
-2. `wiki/index.md` — workspace catalog (now: 3 decisions, 1 module, 1 howto)
+2. `wiki/index.md` — workspace catalog (still: 3 decisions, 1 module — Phase G hasn't run yet)
 3. `memory/general.md` — operational facts
-4. Last ~10 entries of `log.md` — recent activity
-5. If picking Option A: `wiki/decisions/framework-choice.md` (locks WhisperKit + Groq), `wiki/decisions/recorder-capture-pipeline.md` (locks 16 kHz mono WAV format the transcriber will consume), `memory/domains/recorder.md` (recorder open questions including VAD deferral).
-6. If picking Option B: `wiki/decisions/framework-choice.md` (locks hybrid clipboard-paste + CGEvent fallback for text injection).
+4. `docs/superpowers/specs/2026-04-27-transcriber-module-design.md` — the spec
+5. `docs/superpowers/plans/2026-04-27-transcriber-module.md` — the plan with the `nonisolated` patch
+6. Last ~20 entries of `git log --oneline` — recent transcriber TDD commits + AppDelegate wiring
+7. `Diktador/AppDelegate.swift` — current state of the integration
 
 `AGENTS.md` (the schema) and the framework ADR auto-load via the project `CLAUDE.md` symlink.
 
-## Sharp edges to remember
+## Sharp edges to remember (load-bearing — don't regress)
 
-### Audio / recorder lessons (load-bearing — don't regress)
+### New (this session)
 
-- **Hardened Runtime requires the `com.apple.security.device.audio-input` entitlement.** It lives in `Diktador/Diktador.entitlements` and is wired through `CODE_SIGN_ENTITLEMENTS` in `project.yml`. Removing it = silent mic denial; `AVCaptureDevice.requestAccess` returns `false` without prompting and the app never appears in the Mic panel. The transcriber may need its own entitlement (`com.apple.security.network.client` for Groq HTTPS); audit during that ADR.
-- **`AVAudioEngine` tap callbacks fire on the Core Audio thread**, not main. The driver hops to main internally; if a future tap implementation skips the hop, the recorder's COW dance corrupts state. `dispatchPrecondition(.onQueue(.main))` in `Recorder.handleBuffer` makes the contract a runtime-checked invariant.
-- **`AVAudioEngine` recycles its tap buffer** between callbacks. The driver memcpys the float channel data on the audio thread before dispatching to main; otherwise main reads the latest buffer's data on every queued invocation.
-- **`AVAudioConverter` `.endOfStream` is permanent.** For streaming usage, signal `.noDataNow` and reuse the converter across calls. `.endOfStream` after the first buffer = every subsequent recording is exactly one tap buffer (~0.1s) regardless of duration held.
-- **macOS `Press 🌐 to` setting must be "Do nothing"** for bare-Fn push-to-talk to work without firing Apple's globe action (from PR #3).
+- **Swift 6 strict-concurrency requires `nonisolated static func defaultModelStorage()`.** Calling a `@MainActor`-isolated static func from a default-argument expression in a nonisolated context fails to compile under Swift 6.3.1. The function body uses only Sendable Foundation APIs, so dropping isolation is safe. Documented inline at `modules/diktador-transcriber/Sources/DiktadorTranscriber/WhisperKitTranscriber.swift`.
+- **AppDelegate stored-property init can't construct a `@MainActor` type.** Use `@MainActor lazy var transcriber = WhisperKitTranscriber()`. AppDelegate itself is plain `class AppDelegate: NSObject` (not `@MainActor` annotated); `Task { @MainActor [weak self] in }` provides the isolation at the call sites.
+- **Concurrent `loadModel` failures must coalesce consistently.** Original plan body let waiter B see the raw driver error instead of `.modelLoadFailed(message:)`. Fix: move state mutations + error mapping INTO the in-flight `Task<Void, Error> { @MainActor in … }` body so any caller awaiting `task.value` gets identical throw semantics. Codified by `test_loadModel_concurrentFailures_bothCallersGetModelLoadFailed` (commit `4ef39fc`).
+- **`@unchecked Sendable` on `LiveWhisperKitDriver` is required** because `WhisperKit` is `open class` with mutable public vars and no `Sendable` conformance. The `NSLock` around the held pipeline reference is what makes the wrapper safe.
+- **`results.map { $0.text }.joined(separator: " ")` matches WhisperKit's own merge convention.** WhisperKit trims each `TranscriptionResult.text` at construction; no double-space risk.
+- **WhisperKit version pin**: `Package.swift` says `from: "0.9.0"`; `Package.resolved` actually pulled `0.18.0`. API is stable at that range. Capture in Phase G's README "Known failure modes" so future bisects know.
+- **`prewarm: true` in `WhisperKitConfig` doubles first-run model load time** (per WhisperKit's docs at `Configurations.swift:55-66`). Trade-off accepted to keep peak memory bounded on 8 GB Apple Silicon. Phase G should capture this as a design decision.
 
-### Dev-time gotchas (will hit you on every rebuild)
+### Carried forward (still apply)
 
-- **Rebuilding ad-hoc-signed apps invalidates TCC grants.** Each rebuild gets a new codesign hash; macOS treats it as a new binary for TCC purposes. After every rebuild during dev, toggle Diktador OFF and ON in System Settings → Input Monitoring (and Microphone). `tccutil reset Microphone com.noelferrer.Diktador` purges the entry entirely if the toggle dance fails. Same for `tccutil reset ListenEvent com.noelferrer.Diktador`.
-- **Each TCC consent prompt only shows once per app-bundle/user pair.** Re-trigger via `tccutil reset` or change the bundle ID. The "fresh bundle ID" trick (`com.noelferrer.DiktadorDev`) is a useful TCC-debug escape valve when state gets stuck — ship reverts to `com.noelferrer.Diktador`.
-- **Privacy panel's + button refuses to browse `~/Library/Developer/...` paths**. If you need to manually add an app, copy it to `/Applications/` first (which is what `/Applications/DiktadorDev.app` was for this session).
-- **Computer-use verification is the only way to catch entitlement / threading / converter-streaming bugs.** Unit tests with stubs missed all three runtime fixes from PR #4. Hold real Fn, hear real voice in the WAV — no shortcuts.
-
-### Other workspace edges
-
+- **Hardened Runtime requires `com.apple.security.device.audio-input`** (recorder). Not adding `com.apple.security.network.client` for WhisperKit's HuggingFace fetch — outbound HTTPS is allowed under Hardened Runtime without it. Groq's PR will revisit if it adds network code.
+- **Rebuilding ad-hoc-signed apps invalidates TCC grants.** After every rebuild during dev, toggle Diktador OFF and ON in Input Monitoring + Microphone. `tccutil reset Microphone com.noelferrer.Diktador` purges entries that get stuck.
+- **macOS `Press 🌐 to` setting must be "Do nothing"** for bare-Fn push-to-talk to work.
+- **`AVAudioEngine` tap callbacks fire on the Core Audio thread**, recorder copies the buffer + dispatches to main; never regress this (PR #4 lessons).
+- **`AVAudioConverter` `.endOfStream` is permanent**; signal `.noDataNow` for streaming usage (PR #4 lesson).
 - **No pushing to `main` directly** — workspace hook blocks it. PRs merge through `gh pr merge`.
-- **NSEvent monitor handles aren't ARC-managed** (from PR #3). The hotkey module's `unregister` and `deinit` both call `NSEvent.removeMonitor`.
-- **Workspace `/go` skill** at `.claude/skills/go/SKILL.md` is the ship cycle. Phase 1 (test) → Phase 2 (`/simplify`) → Phase 3 (PR) → Phase 4 (post-ship `log.md` + `memory/daily/` hygiene).
-- **`/simplify` 3-agent convergence pattern**: when reuse + efficiency or quality + efficiency flag the same finding, that's high signal and worth fixing. Single-agent flags are usually defensible-as-is.
-- **`pushToTalkToken`** in `AppDelegate` is held for hygiene but never read in v1 (from PR #3). The settings module will read + unregister + re-register when the user changes the trigger.
-- **Subagent-driven cadence** (used through PRs #3 and #4): implementer (sonnet) → spec reviewer (haiku) → code-quality reviewer (`superpowers:code-reviewer`, opus). Final review across whole branch before merge. Pattern is working — keep using it.
+- **Subagent-driven cadence** (used through PRs #3, #4 and continuing here): implementer (sonnet/general-purpose) → spec reviewer (general-purpose) → code-quality reviewer (`superpowers:code-reviewer`, opus). Final whole-branch review before merge. Pattern is working — keep using it.
+- **Workspace `/go` skill** at `.claude/skills/go/SKILL.md` is the ship cycle. Phase H of this plan mirrors `/go`.
 
 ## Auto-memory note
 
