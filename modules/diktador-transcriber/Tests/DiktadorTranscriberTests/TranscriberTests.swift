@@ -49,6 +49,31 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(driver.loadModelCalls.first?.modelStorage, modelStorage)
     }
 
+    @MainActor
+    func test_loadModel_failure_transitionsToFailed_andRethrows() async throws {
+        struct DriverFailure: Error { let detail: String }
+        let driver = StubWhisperKitDriver()
+        driver.loadModelError = DriverFailure(detail: "no network")
+        let transcriber = WhisperKitTranscriber(driver: driver)
+
+        do {
+            try await transcriber.loadModel()
+            XCTFail("expected loadModel to throw")
+        } catch let error as TranscriberError {
+            if case .modelLoadFailed(let message) = error {
+                XCTAssertTrue(message.contains("no network"), "got: \(message)")
+            } else {
+                XCTFail("unexpected error: \(error)")
+            }
+        }
+
+        if case .failed(let inner) = transcriber.state {
+            if case .modelLoadFailed = inner { /* ok */ } else { XCTFail() }
+        } else {
+            XCTFail("expected .failed state, got \(transcriber.state)")
+        }
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
