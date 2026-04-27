@@ -71,7 +71,34 @@ public final class WhisperKitTranscriber: Transcriber {
     }
 
     public func transcribe(audioFileURL: URL) async throws -> String {
-        // Stub for D3+. Initial body just to make the type compile.
-        throw TranscriberError.transcriptionFailed(message: "not yet implemented")
+        // Validate file exists before paying for state transitions.
+        guard FileManager.default.fileExists(atPath: audioFileURL.path) else {
+            throw TranscriberError.audioFileUnreadable(audioFileURL)
+        }
+
+        // Drive load if needed; surface the same .modelLoadFailed error.
+        try await loadModel()
+
+        // Sticky-failure check after loadModel returns.
+        if case .failed(let error) = state { throw error }
+
+        state = .transcribing
+        do {
+            let raw = try await driver.transcribe(audioFileURL: audioFileURL)
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            state = .ready
+            if trimmed.isEmpty { throw TranscriberError.emptyTranscript }
+            return trimmed
+        } catch let error as TranscriberError {
+            if case .emptyTranscript = error {
+                // .ready state was already restored before throwing emptyTranscript.
+                throw error
+            }
+            state = .ready
+            throw error
+        } catch {
+            state = .ready
+            throw TranscriberError.transcriptionFailed(message: String(describing: error))
+        }
     }
 }

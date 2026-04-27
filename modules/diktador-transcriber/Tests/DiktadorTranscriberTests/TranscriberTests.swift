@@ -98,10 +98,35 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(transcriber.state, .ready)
     }
 
+    @MainActor
+    func test_transcribe_happyPath_returnsDriverResult_andStateReturnsToReady() async throws {
+        let driver = StubWhisperKitDriver()
+        driver.transcribeResult = "hello world"
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        try await transcriber.loadModel()
+
+        let url = Self.tempAudioFile()
+        let text = try await transcriber.transcribe(audioFileURL: url)
+
+        XCTAssertEqual(text, "hello world")
+        XCTAssertEqual(driver.transcribeCalls, [url])
+        XCTAssertEqual(transcriber.state, .ready)
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
         )
+        return url
+    }
+
+    static func tempAudioFile() -> URL {
+        // Real bytes aren't required — the stub driver doesn't read the file.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "diktador-test-\(UUID().uuidString).wav"
+        )
+        let header = Data(repeating: 0, count: 44)  // minimal nonzero file
+        try? header.write(to: url)
         return url
     }
 }
