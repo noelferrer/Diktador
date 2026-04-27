@@ -143,6 +143,28 @@ final class TranscriberTests: XCTestCase {
         XCTAssertEqual(transcriber.state, .ready)
     }
 
+    @MainActor
+    func test_transcribe_driverFailure_throwsTranscriptionFailed_andRecovers() async throws {
+        struct InferenceFailure: Error {}
+        let driver = StubWhisperKitDriver()
+        driver.transcribeError = InferenceFailure()
+        let transcriber = WhisperKitTranscriber(driver: driver)
+        try await transcriber.loadModel()
+
+        do {
+            _ = try await transcriber.transcribe(audioFileURL: Self.tempAudioFile())
+            XCTFail("expected transcriptionFailed")
+        } catch TranscriberError.transcriptionFailed { /* expected */ }
+
+        XCTAssertEqual(transcriber.state, .ready, "transient transcription failure must not poison state")
+
+        // Subsequent transcribe still works (driver unset on next call):
+        driver.transcribeError = nil
+        driver.transcribeResult = "second try"
+        let text = try await transcriber.transcribe(audioFileURL: Self.tempAudioFile())
+        XCTAssertEqual(text, "second try")
+    }
+
     static func tempModelStorage() -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "diktador-test-models-\(UUID().uuidString)"
