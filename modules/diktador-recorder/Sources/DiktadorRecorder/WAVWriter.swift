@@ -3,6 +3,8 @@ import AVFoundation
 /// Writes a `[Float]` accumulator to a WAV file at 16 kHz mono 16-bit PCM.
 internal struct WAVWriter {
     func write(samples: [Float], to url: URL) throws {
+        guard !samples.isEmpty else { throw RecorderError.fileWriteFailed }
+
         let directory = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: directory,

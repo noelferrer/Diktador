@@ -6,24 +6,20 @@ import AVFoundation
 internal final class SampleRateConverter {
     static let targetSampleRate: Double = 16_000
 
-    static var targetFormat: AVAudioFormat {
-        AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: targetSampleRate,
-            channels: 1,
-            interleaved: false
-        )!
-    }
+    static let targetFormat: AVAudioFormat = AVAudioFormat(
+        commonFormat: .pcmFormatFloat32,
+        sampleRate: targetSampleRate,
+        channels: 1,
+        interleaved: false
+    )!
 
     private var converter: AVAudioConverter?
-    private var sourceFormat: AVAudioFormat?
 
     /// Converts `buffer` to 16 kHz mono Float32 and appends the resulting
     /// samples to `accumulator`. Returns the number of frames appended.
     /// Throws `RecorderError.formatConversionFailed` on setup or convert failure.
     func append(_ buffer: AVAudioPCMBuffer, into accumulator: inout [Float]) throws -> AVAudioFrameCount {
         if converter == nil {
-            sourceFormat = buffer.format
             guard let c = AVAudioConverter(from: buffer.format, to: Self.targetFormat) else {
                 throw RecorderError.formatConversionFailed
             }
