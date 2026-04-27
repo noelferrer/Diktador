@@ -19,7 +19,7 @@ internal final class AVAudioEngineDriver: AudioEngineDriver {
     private var tapInstalled = false
 
     var inputFormat: AVAudioFormat {
-        engine.inputNode.inputFormat(forBus: 0)
+        engine.inputNode.outputFormat(forBus: 0)
     }
 
     func installTap(
@@ -27,17 +27,33 @@ internal final class AVAudioEngineDriver: AudioEngineDriver {
         onBuffer: @escaping (AVAudioPCMBuffer) -> Void
     ) throws {
         guard !tapInstalled else { return }
+        // Apple's input-node tap pattern uses outputFormat (what the node emits),
+        // not inputFormat. Some hardware paths only deliver one tap callback when
+        // installTap is given inputFormat.
+        let format = engine.inputNode.outputFormat(forBus: 0)
         engine.inputNode.installTap(
             onBus: 0,
             bufferSize: bufferSize,
-            format: engine.inputNode.inputFormat(forBus: 0)
+            format: format
         ) { buffer, _ in
-            // Hop to main so Recorder's state mutations live on a single thread.
-            // The buffer is value-semantic (AVAudioPCMBuffer is a class, but its
-            // contents are copied implicitly when the AudioEngine reuses the
-            // backing storage) — the engine retains its own ring of buffers.
+            // The engine recycles its tap buffer for subsequent callbacks, so the
+            // contents must be copied synchronously on the audio thread before
+            // handing the data off to main; otherwise main only sees the most
+            // recent buffer's data on every queued dispatch.
+            guard let copy = AVAudioPCMBuffer(
+                pcmFormat: buffer.format,
+                frameCapacity: buffer.frameCapacity
+            ) else { return }
+            copy.frameLength = buffer.frameLength
+            let channels = Int(buffer.format.channelCount)
+            let frameCount = Int(buffer.frameLength)
+            if let src = buffer.floatChannelData, let dst = copy.floatChannelData {
+                for ch in 0..<channels {
+                    memcpy(dst[ch], src[ch], frameCount * MemoryLayout<Float>.size)
+                }
+            }
             DispatchQueue.main.async {
-                onBuffer(buffer)
+                onBuffer(copy)
             }
         }
         tapInstalled = true
