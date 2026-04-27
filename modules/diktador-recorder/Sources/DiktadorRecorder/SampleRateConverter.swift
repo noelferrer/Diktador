@@ -41,9 +41,14 @@ internal final class SampleRateConverter {
 
         var consumed = false
         var error: NSError?
+        // .noDataNow (not .endOfStream): we've fed the single tap buffer for
+        // this conversion call and have nothing more *right now*; the converter
+        // must keep its internal resampler state alive for the next tap buffer.
+        // Signaling .endOfStream after the first buffer would terminate the
+        // stream and silently produce zero output on every subsequent call.
         let status = converter.convert(to: outBuffer, error: &error) { _, inputStatus in
             if consumed {
-                inputStatus.pointee = .endOfStream
+                inputStatus.pointee = .noDataNow
                 return nil
             }
             consumed = true
