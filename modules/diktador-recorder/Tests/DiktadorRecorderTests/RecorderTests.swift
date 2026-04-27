@@ -52,6 +52,130 @@ final class RecorderTests: XCTestCase {
         XCTAssertFalse(recorder.isRecording)
     }
 
+    func test_start_installsTapAndStartsEngine() throws {
+        let perms = StubPermissionProvider(); perms.statusToReturn = .granted
+        let driver = StubAudioEngineDriver()
+        let recorder = Recorder(
+            permissionProvider: perms,
+            engineDriver: driver,
+            recordingsDirectory: Self.tempRecordingsDirectory()
+        )
+
+        try recorder.start()
+
+        XCTAssertTrue(recorder.isRecording)
+        XCTAssertEqual(driver.calls, [
+            .installTap(bufferSize: 4096),
+            .start,
+        ])
+    }
+
+    func test_start_throws_alreadyRecording_onSecondCall() throws {
+        let perms = StubPermissionProvider(); perms.statusToReturn = .granted
+        let driver = StubAudioEngineDriver()
+        let recorder = Recorder(
+            permissionProvider: perms,
+            engineDriver: driver,
+            recordingsDirectory: Self.tempRecordingsDirectory()
+        )
+        try recorder.start()
+
+        XCTAssertThrowsError(try recorder.start()) { error in
+            XCTAssertEqual(error as? RecorderError, .alreadyRecording)
+        }
+    }
+
+    func test_stop_returnsNotRecording_whenIdle() {
+        let perms = StubPermissionProvider(); perms.statusToReturn = .granted
+        let recorder = Recorder(
+            permissionProvider: perms,
+            engineDriver: StubAudioEngineDriver(),
+            recordingsDirectory: Self.tempRecordingsDirectory()
+        )
+
+        let exp = expectation(description: "completion")
+        var observed: Result<RecordingResult, Error>?
+        recorder.stop { result in
+            observed = result
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 1.0)
+
+        if case .failure(let error) = observed {
+            XCTAssertEqual(error as? RecorderError, .notRecording)
+        } else {
+            XCTFail("expected .failure(.notRecording), got \(String(describing: observed))")
+        }
+    }
+
+    func test_stopAfterStart_writesWAVAndReturnsResult() throws {
+        let perms = StubPermissionProvider(); perms.statusToReturn = .granted
+        let driver = StubAudioEngineDriver()
+        let dir = Self.tempRecordingsDirectory()
+        let recorder = Recorder(
+            permissionProvider: perms,
+            engineDriver: driver,
+            recordingsDirectory: dir
+        )
+
+        try recorder.start()
+        // Feed three native-rate buffers (~85 ms each at 48 kHz).
+        driver.feedZeroBuffer(frameCount: 4096)
+        driver.feedZeroBuffer(frameCount: 4096)
+        driver.feedZeroBuffer(frameCount: 4096)
+
+        let exp = expectation(description: "completion")
+        var observed: Result<RecordingResult, Error>?
+        recorder.stop { result in
+            observed = result
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+
+        guard case .success(let result) = observed else {
+            XCTFail("expected .success, got \(String(describing: observed))")
+            return
+        }
+        XCTAssertGreaterThan(result.sampleCount, 0)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: result.fileURL.path))
+        XCTAssertEqual(result.fileURL.pathExtension, "wav")
+        XCTAssertFalse(recorder.isRecording)
+
+        // Driver lifecycle calls in expected order: installTap, start, removeTap, stop.
+        XCTAssertEqual(driver.calls, [
+            .installTap(bufferSize: 4096),
+            .start,
+            .removeTap,
+            .stop,
+        ])
+
+        try? FileManager.default.removeItem(at: dir)
+    }
+
+    func test_start_engineFailure_throwsEngineUnavailable() {
+        let perms = StubPermissionProvider(); perms.statusToReturn = .granted
+        let driver = StubAudioEngineDriver()
+        struct DummyError: Error {}
+        driver.startError = DummyError()
+        let recorder = Recorder(
+            permissionProvider: perms,
+            engineDriver: driver,
+            recordingsDirectory: Self.tempRecordingsDirectory()
+        )
+
+        XCTAssertThrowsError(try recorder.start()) { error in
+            XCTAssertEqual(error as? RecorderError, .engineUnavailable)
+        }
+        XCTAssertFalse(recorder.isRecording)
+        // Tap was installed then removed during the unwind.
+        XCTAssertEqual(driver.calls, [
+            .installTap(bufferSize: 4096),
+            .start,
+            .removeTap,
+            .stop,
+        ])
+    }
+
     // MARK: - Helpers
 
     private static func tempRecordingsDirectory() -> URL {
