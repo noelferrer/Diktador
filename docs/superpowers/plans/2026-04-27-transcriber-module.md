@@ -395,7 +395,11 @@ import Foundation
 public final class WhisperKitTranscriber: Transcriber {
     public static let defaultModelName = "openai_whisper-base"
 
-    public static func defaultModelStorage() -> URL {
+    /// `nonisolated` because Swift 6 strict concurrency disallows calling a
+    /// MainActor-isolated static func from a default-argument expression in a
+    /// nonisolated context (the internal init's `modelStorage:` default).
+    /// The body uses only Sendable Foundation APIs, so dropping isolation is safe.
+    public nonisolated static func defaultModelStorage() -> URL {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
