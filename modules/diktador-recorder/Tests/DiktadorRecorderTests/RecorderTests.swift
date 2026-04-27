@@ -176,6 +176,37 @@ final class RecorderTests: XCTestCase {
         ])
     }
 
+    func test_stopAfterStart_failsFileWrite_whenDirectoryIsUnwritable() throws {
+        let perms = StubPermissionProvider(); perms.statusToReturn = .granted
+        let driver = StubAudioEngineDriver()
+        // Point at a path under /dev/null which can never be written to.
+        let unwritableDir = URL(fileURLWithPath: "/dev/null/Diktador-recordings")
+        let recorder = Recorder(
+            permissionProvider: perms,
+            engineDriver: driver,
+            recordingsDirectory: unwritableDir
+        )
+
+        try recorder.start()
+        driver.feedZeroBuffer(frameCount: 4096)
+
+        let exp = expectation(description: "completion")
+        var observed: Result<RecordingResult, Error>?
+        recorder.stop { result in
+            observed = result
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+
+        guard case .failure(let error) = observed else {
+            XCTFail("expected .failure, got \(String(describing: observed))")
+            return
+        }
+        XCTAssertEqual(error as? RecorderError, .fileWriteFailed)
+        // Recorder should be back to idle so a subsequent start() can succeed.
+        XCTAssertFalse(recorder.isRecording)
+    }
+
     // MARK: - Helpers
 
     private static func tempRecordingsDirectory() -> URL {

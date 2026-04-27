@@ -120,9 +120,13 @@ public final class Recorder {
 
     private func handleBuffer(_ buffer: AVAudioPCMBuffer) {
         guard case .recording(var samples, let startedAt) = state else { return }
+        // Drop the state's reference to the array storage so `samples` holds
+        // the only strong ref; this lets `converter.append` mutate in place
+        // instead of paying COW (full reallocation + copy) on every callback.
+        state = .finalizing
+        defer { state = .recording(samples: samples, startedAt: startedAt) }
         do {
             _ = try converter.append(buffer, into: &samples)
-            state = .recording(samples: samples, startedAt: startedAt)
         } catch {
             NSLog("[recorder] format conversion failed: \(error)")
         }

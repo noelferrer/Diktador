@@ -6,10 +6,14 @@ internal struct WAVWriter {
         guard !samples.isEmpty else { throw RecorderError.fileWriteFailed }
 
         let directory = url.deletingLastPathComponent()
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+        } catch {
+            throw RecorderError.fileWriteFailed
+        }
 
         // 16-bit PCM mono at 16 kHz. AVAudioFile takes a settings dict for the
         // file format; the in-memory buffer stays Float32 and AVAudioFile

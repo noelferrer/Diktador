@@ -32,7 +32,13 @@ internal final class AVAudioEngineDriver: AudioEngineDriver {
             bufferSize: bufferSize,
             format: engine.inputNode.inputFormat(forBus: 0)
         ) { buffer, _ in
-            onBuffer(buffer)
+            // Hop to main so Recorder's state mutations live on a single thread.
+            // The buffer is value-semantic (AVAudioPCMBuffer is a class, but its
+            // contents are copied implicitly when the AudioEngine reuses the
+            // backing storage) — the engine retains its own ring of buffers.
+            DispatchQueue.main.async {
+                onBuffer(buffer)
+            }
         }
         tapInstalled = true
     }
