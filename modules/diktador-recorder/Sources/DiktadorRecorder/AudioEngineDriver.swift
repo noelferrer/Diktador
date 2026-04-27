@@ -1,5 +1,4 @@
 import AVFoundation
-import Foundation
 
 /// Internal seam over the AVAudioEngine surface used by `Recorder`. Real
 /// implementation wires up an engine + input-node tap; tests substitute a stub

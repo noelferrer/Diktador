@@ -1,5 +1,4 @@
 import AVFoundation
-import Foundation
 
 internal protocol MicrophonePermissionProvider: Sendable {
     func currentStatus() -> MicrophonePermissionStatus
